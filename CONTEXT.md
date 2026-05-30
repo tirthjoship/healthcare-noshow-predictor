@@ -1,141 +1,163 @@
-# CONTEXT.md — Healthcare Appointment No-Show Risk (Pivot)
+# CONTEXT.md — Healthcare Appointment No-Show Predictor
 
-**Repo:** `patient-readmission-risk-engine` (folder name unchanged; **rebrand in README**)  
-**Owner:** Tirth Joshi  
-**Created:** 2026-05-30  
-**Phase:** 0 — EDA gate → pivot adapters → train  
+**Repo:** `healthcare-noshow-predictor` (local folder: `patient-readmission-risk-engine` — rename pending)
+**Remote:** `https://github.com/tirthjoship/healthcare-noshow-predictor.git`
+**Owner:** Tirth Joshi
+**Created:** 2026-05-30
+**Phase:** 1 — adapters + training (EDA gate passed)
 **Portfolio slot:** Project 3 of 5
 
-**Read first:** [`../PORTFOLIO_LOCKED_DECISIONS.md`](../PORTFOLIO_LOCKED_DECISIONS.md) · [`../PORTFOLIO_EDA_SPRINT.md`](../PORTFOLIO_EDA_SPRINT.md)
+**Read first:** [`../PORTFOLIO_LOCKED_DECISIONS.md`](../PORTFOLIO_LOCKED_DECISIONS.md) · [`../PORTFOLIO_EDA_SPRINT.md`](../PORTFOLIO_EDA_SPRINT.md) · [`docs/adr/`](docs/adr/)
 
 ---
 
 ## 1. Mission
 
-Predict **medical appointment no-shows** at booking time so clinics can target reminders, overbook strategically, or reallocate capacity.
+Predict **medical appointment no-shows** at booking time so clinic outreach teams can target reminders, recover appointment slots, and reduce revenue loss.
 
 **Pivot rationale:** MIMIC-IV readmission blocked (no credentials). No-show prediction uses public data, clear ROI, and matches **VGH operations / outreach** narrative without claiming employer data.
 
 ---
 
-## 2. Locked decisions
+## 2. Locked Decisions (13 ADRs)
 
-| Decision | Choice |
-|----------|--------|
-| **Problem** | Binary no-show classification |
-| **Dataset** | [Kaggle Medical Appointments](https://www.kaggle.com/datasets/joniarroba/noshowappointments) |
-| **File** | `KaggleV2-May-2016.csv` → `data/raw/` |
-| **Architecture** | Keep existing **hexagonal** layout; replace readmission domain with appointment domain |
-| **NOT using** | MIMIC-IV, UCI readmission (v1), VGH/BCCNM production data |
-| **Evaluation** | AUC, F1, calibration, SHAP; compare to rule baseline |
-| **Fairness** | Slices: gender, age band, top neighbourhoods |
-| **Demo** | Streamlit with disclaimer banner |
+| # | Decision | Choice | ADR |
+|---|----------|--------|-----|
+| 1 | Problem pivot | No-show prediction (from readmission) | ADR-001 |
+| 2 | Primary persona | Outreach / patient engagement team | ADR-002 |
+| 3 | Intervention model | Daily call list (morning huddle) | ADR-003 |
+| 4 | Business impact | Revenue-based, $200/slot, assumptions labeled | ADR-004 |
+| 5 | Threshold strategy | Capacity-constrained top-K | ADR-005 |
+| 6 | SMS confound | Include + prominent documentation (Simpson's paradox) | ADR-006 |
+| 7 | Neighbourhood encoding | Target encoding, train-only, fold-aware | ADR-007 |
+| 8 | Model lineup | Logistic → XGBoost → Calibrated XGBoost | ADR-008 |
+| 9 | Fairness reporting | FPR/FNR + calibration per demographic slice | ADR-009 |
+| 10 | Streamlit demo | Call list landing + SHAP drill-down (2 pages) | ADR-010 |
+| 11 | Split strategy | GroupKFold (CV) + temporal holdout (June) | ADR-011 |
+| 12 | SHAP narrative | "Operations problem, not clinical" | ADR-012 |
+| 13 | Repo name | `healthcare-noshow-predictor` | ADR-013 |
+
+Additional locked decisions:
+- **Dataset:** [Kaggle Medical Appointments](https://www.kaggle.com/datasets/joniarroba/noshowappointments) — `KaggleV2-May-2016.csv`
+- **Architecture:** Hexagonal (ports & adapters)
+- **NOT using:** MIMIC-IV, UCI readmission, VGH/BCCNM production data
+- **Evaluation:** AUC, F1, Brier score, calibration curve, precision@K
 
 ---
 
-## 3. Dataset schema
+## 3. Dataset Schema
 
 | Column | Feature use |
 |--------|-------------|
-| `PatientId` | Grouped split if repeat patients |
+| `PatientId` | Grouped split (39% have multiple appointments) |
 | `AppointmentID` | Row id |
-| `Gender` | Feature |
-| `ScheduledDay` | Parse datetime |
+| `Gender` | Feature (M/F) |
+| `ScheduledDay` | Parse datetime → derive lead_time |
 | `AppointmentDay` | Parse datetime |
 | `Age` | Feature |
-| `Neighbourhood` | Feature (high cardinality — target encode on train only) |
-| `Scholarship`, `Hipertension`, `Diabetes`, `Alcoholism`, `Handcap` | Binary features |
-| `SMS_received` | Feature (prior intervention — document confound) |
+| `Neighbourhood` | Feature (81 unique — target encode on train only) |
+| `Scholarship`, `Hipertension`, `Diabetes`, `Alcoholism`, `Handcap` | Binary/ordinal features |
+| `SMS_received` | Feature (intervention confound — document Simpson's paradox) |
 | `No-show` | Target (`Yes`/`No` → 1/0) |
 
-**Engineered feature:** `lead_time_days = (AppointmentDay - ScheduledDay).days`
+**Engineered feature:** `lead_time_days = (AppointmentDay - ScheduledDay).days` (clipped ≥ 0)
 
-**Leakage rule:** No post-appointment columns. All features knowable at schedule time.
-
----
-
-## 4. Expected signal (literature sanity check)
-
-- National/clinic no-show rates ~15–30%; dataset ~20%
-- Literature AUC ~0.70–0.75 with similar features
-- If EDA shows AUC < 0.60 on logistic baseline → investigate data issues before proceeding
+**Leakage rule:** All features must be knowable at scheduling time. No post-appointment data.
 
 ---
 
-## 5. Phase 0 — EDA gate (START HERE)
+## 4. EDA Gate Results (PASSED)
 
-Outputs:
-- `notebooks/00_eda_gate.ipynb`
-- `reports/eda_gate.md`
+| Gate | Criterion | Result |
+|------|-----------|--------|
+| Target rate 15-30% | 20.2% | ✅ |
+| Logistic AUC ≥ 0.65 | 0.6558 | ✅ |
+| No single feature >80% | max 32.9% | ✅ |
+| No missing values | 0 nulls | ✅ |
+| Sufficient volume | 110,527 rows | ✅ |
 
-See full checklist in `../PORTFOLIO_EDA_SPRINT.md` § Project 3.
+Key findings: `reports/eda_gate.md`
 
 ---
 
-## 6. Pivot implementation map
+## 5. Project Identity (What Makes This Unique)
 
-| Readmission (old) | No-show (new) |
+- **Calibration focus** — Logistic → XGBoost → Calibrated XGBoost. Probability quality matters for ranking.
+- **SHAP comparison narrative** — "This is an operations problem, not a clinical one" (scheduling features >> clinical features)
+- **SMS Simpson's paradox** — documented confound, strong interview talking point
+- **Dual validation** — GroupKFold + temporal holdout
+- **Fairness** — FPR/FNR + calibration per demographic slice
+
+---
+
+## 6. Domain Model (Pivoted)
+
+| Old (readmission) | New (no-show) |
 |-------------------|---------------|
 | `Encounter` | `Appointment` |
-| `Patient` | `Patient` (keep) |
+| `Patient` | `Patient` (slimmed: removed insurance_type) |
 | `RiskOutcome` | `NoShowOutcome` |
-| `readmission` label | `no_show` label |
-| `DataLeakageError` | Keep — post-appointment fields forbidden |
+| `PatientDataRepository` | `AppointmentRepository` |
+| `RiskPredictorPort` | `NoShowPredictorPort` |
+| `InvalidAdmissionDataError` | `InvalidAppointmentDataError` |
 | MIMIC adapter | `KaggleAppointmentCSVRepository` |
-| Clinical SHAP narrative | Ops narrative: SMS, lead time, age |
-
-**Rename in README/title** to `Healthcare Appointment No-Show Risk Engine`.  
-**Defer** folder rename on GitHub until user approves remote URL change.
+| Clinical SHAP narrative | Ops narrative: lead time, age, SMS |
 
 ---
 
-## 7. Business impact doc
+## 7. Business Impact Model
 
-`docs/BUSINESS_IMPACT.md`:
 ```
-recoverable_slots = top_decile_count × (precision at threshold)
-cost_per_noshow = $X (label assumption)
-monthly_value = recoverable_slots × cost_per_noshow
+recoverable_slots = top_K_count × precision_at_K
+cost_per_noshow = $200 (primary care literature estimate, assumption labeled)
+monthly_value = recoverable_slots × cost_per_noshow × 22 working_days
 ```
 
----
-
-## 8. Success criteria
-
-- EDA gate GO
-- Logistic + XGBoost trained; metrics in `reports/model_metrics.json`
-- SHAP global + 3 local cases in docs
-- Fairness slice table in `reports/fairness.md`
-- Streamlit demo
-- README disclaimer: public benchmark data
+Output: `docs/BUSINESS_IMPACT.md`
 
 ---
 
-## 9. Claude Code — session playbook
+## 8. Success Criteria
 
-### Session 1
+- [x] EDA gate GO
+- [ ] KaggleAppointmentCSVRepository adapter
+- [ ] Logistic + XGBoost + Calibrated XGBoost trained
+- [ ] Metrics in `reports/model_metrics.json` (AUC, F1, Brier, calibration)
+- [ ] GroupKFold + temporal holdout results
+- [ ] SHAP global + 3 local cases
+- [ ] Fairness slice table in `reports/fairness.md`
+- [ ] Streamlit demo (call list + drill-down)
+- [ ] `docs/BUSINESS_IMPACT.md`
+- [ ] README rebranded with disclaimer
+
+---
+
+## 9. Session Playbook
+
+### Session 1 (DONE)
 ```text
-Read CONTEXT.md. Phase 0 EDA only on data/raw/KaggleV2-May-2016.csv.
-Produce notebooks/00_eda_gate.ipynb and reports/eda_gate.md.
-Do not refactor domain yet if EDA fails gate.
+Phase 0 EDA gate on data/raw/KaggleV2-May-2016.csv.
+Domain pivot from readmission to no-show.
+13 ADRs recorded. CONTEXT.md updated.
 ```
 
 ### Session 2
 ```text
-EDA passed. Pivot domain models and adapters from readmission to no-show.
-Implement KaggleAppointmentCSVRepository. Update tests.
-Train logistic + XGBoost; save reports/model_metrics.json.
+Build KaggleAppointmentCSVRepository adapter.
+Train Logistic + XGBoost + Calibrated XGBoost.
+GroupKFold CV + temporal holdout. Save reports/model_metrics.json.
 ```
 
 ### Session 3
 ```text
-SHAP, fairness report, Streamlit, README rebrand, docs/BUSINESS_IMPACT.md.
-Remove MIMIC references from README unless marked future work.
+SHAP (global + 3 local), fairness report, Streamlit demo.
+docs/BUSINESS_IMPACT.md, README rebrand.
+Remove readmission references unless marked future work.
 ```
 
 ---
 
-## 10. CV update rule
+## 10. CV Update Rule
 
-Only update `career-ops/cv.md` after metrics exist in `reports/`.  
+Only update `career-ops/cv.md` after metrics exist in `reports/`.
 Replace "Healthcare Readmission Risk Engine" bullet with no-show wording + real AUC.

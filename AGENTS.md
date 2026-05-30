@@ -13,12 +13,12 @@
 
 ## Naming Conventions
 
-- **Variables and functions**: `snake_case` (e.g., `get_admissions`, `compute_readmission_risk`)
-- **Classes**: `PascalCase` (e.g., `AdmissionRepository`, `Patient`)
-- **Constants**: `UPPER_SNAKE_CASE` (e.g., `RISK_THRESHOLD`, `EXCLUDED_COLUMNS`)
+- **Variables and functions**: `snake_case` (e.g., `get_appointments`, `predict_no_show`)
+- **Classes**: `PascalCase` (e.g., `AppointmentRepository`, `Patient`)
+- **Constants**: `UPPER_SNAKE_CASE` (e.g., `RISK_THRESHOLD`, `LEAKAGE_COLUMNS`)
 - **Modules**: `snake_case` (e.g., `csv_repository.py`, `use_cases.py`)
-- **Test functions**: `test_<description>` (e.g., `test_readmission_within_30_days`)
-- **Private methods**: prefix with `_` (e.g., `_parse_admission_date`, `_safe_float`)
+- **Test functions**: `test_<description>` (e.g., `test_no_show_high_lead_time`)
+- **Private methods**: prefix with `_` (e.g., `_parse_scheduled_day`, `_encode_neighbourhood`)
 
 ## Architecture Rules (NON-NEGOTIABLE)
 
@@ -32,9 +32,11 @@
 
 ## Data Integrity Rules (NON-NEGOTIABLE)
 
-- Domain-specific leakage columns and evaluation rules to be defined after brainstorming
-- General rule: all feature engineering must use only pre-discharge information
-- Evaluate models appropriately for class distribution (check imbalance before choosing metrics)
+- **Leakage rule:** All features must be knowable at scheduling time (pre-appointment)
+- `DataLeakageError` raised if post-appointment features detected
+- Target encoding (neighbourhood) fit on training data ONLY — never on full dataset
+- GroupKFold by PatientId — same patient never in train and test
+- SMS_received is intervention feature — include but document confound (ADR-006)
 
 ## Testing Rules (NON-NEGOTIABLE)
 
@@ -55,25 +57,27 @@
 
 ```
 domain/                 Pure business logic
-├── models.py           Frozen dataclasses
-├── ports.py            Protocol interfaces
-├── services.py         Business rules
-└── exceptions.py       Domain-specific errors
+├── models.py           Patient, Appointment, NoShowOutcome (frozen dataclasses)
+├── ports.py            AppointmentRepository, NoShowPredictorPort (Protocols)
+├── services.py         Baseline no-show risk heuristic
+└── exceptions.py       DataLeakageError, InvalidAppointmentDataError
 
 adapters/               External connections
-├── data/               Data source connectors
-├── ml/                 Model adapters
-└── visualization/      Charting adapters
+├── data/               KaggleAppointmentCSVRepository
+├── ml/                 Logistic, XGBoost, CalibratedXGBoost adapters
+└── visualization/      Streamlit components
 
 application/            Orchestration
-└── use_cases.py        Wires domain + adapters for business workflows
+└── use_cases.py        train_model, predict_no_show
 
 tests/                  Mirrors source layout
 
-notebooks/              Exploration and EDA only — no production logic
+notebooks/              EDA only — no production logic
+docs/adr/               Architecture Decision Records (ADR-001 through ADR-013)
 data/raw/               Untouched source data (gitignored)
 data/interim/           Intermediate artifacts (gitignored)
 data/processed/         Model-ready data (gitignored)
+reports/                EDA gate, model metrics, fairness
 ```
 
 ## Git (NON-NEGOTIABLE)
