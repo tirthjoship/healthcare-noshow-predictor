@@ -1,4 +1,4 @@
-"""Domain exceptions for patient readmission risk.
+"""Domain exceptions for appointment no-show prediction.
 
 All domain-level errors inherit from DomainError.
 """
@@ -10,31 +10,30 @@ class DomainError(Exception):
     pass
 
 
-class InvalidAdmissionDataError(DomainError):
-    """Raised when encounter/admission data violates business invariants.
+class InvalidAppointmentDataError(DomainError):
+    """Raised when appointment data violates business invariants.
 
-    Examples: negative age or counts, invalid admission type or gender code,
-    missing required fields.
+    Examples: negative age, negative lead time, invalid gender code,
+    appointment day before scheduled day.
     """
 
     pass
 
 
-class InvalidRiskAssessmentError(DomainError):
-    """Raised when risk outcome data is invalid.
+class InvalidNoShowPredictionError(DomainError):
+    """Raised when no-show prediction data is invalid.
 
-    Examples: risk score outside [0, 1], invalid risk category,
-    missing required fields.
+    Examples: risk score outside [0, 1], invalid risk category.
     """
 
     pass
 
 
 class DataLeakageError(DomainError):
-    """Raised when post-discharge features are detected in training or prediction.
+    """Raised when post-appointment features are detected in training or prediction.
 
-    Prevents models from using future-looking clinical data that would
-    not be available at prediction time.
+    All features must be knowable at scheduling time. Any feature derived
+    from appointment outcome (e.g. actual attendance) is leakage.
     """
 
     pass
