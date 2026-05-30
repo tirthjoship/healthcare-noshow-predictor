@@ -4,7 +4,11 @@ This file provides guidance to Claude Code when working with this repository. Re
 
 ## Project Context
 
-Hospital readmission risk prediction — predicting 30-day readmission using pre-discharge features only. Domain-specific details to be added after brainstorming.
+**PIVOT (2026-05-30):** Healthcare **appointment no-show** prediction — not MIMIC readmission.
+
+Read **`CONTEXT.md`** for locked dataset (Kaggle Medical Appointments), EDA gate, and pivot map from readmission domain models.
+
+Public benchmark only — not VGH/BCCNM production data.
 
 ## Architecture
 

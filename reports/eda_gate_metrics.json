@@ -1,0 +1,31 @@
+{
+  "dataset": "KaggleV2-May-2016.csv",
+  "n_rows": 110527,
+  "n_patients": 62299,
+  "target_rate": 0.2019,
+  "logistic_auc": 0.6558,
+  "max_feature_pct": 32.9,
+  "gate_verdict": "GO",
+  "gates": {
+    "1. Target rate 15-30%": {
+      "pass": "True",
+      "value": "20.2%"
+    },
+    "2. Logistic AUC >= 0.65": {
+      "pass": true,
+      "value": "0.6558"
+    },
+    "3. No single feature >80% importance": {
+      "pass": "True",
+      "value": "max 32.9%"
+    },
+    "4. No missing values": {
+      "pass": "True",
+      "value": "0 nulls (raw columns)"
+    },
+    "5. Sufficient volume (>=50k)": {
+      "pass": true,
+      "value": "110,527 rows"
+    }
+  }
+}
