@@ -1,193 +1,186 @@
-# Patient Readmission Risk Engine
+# Healthcare Appointment No-Show Predictor
 
-Production-grade ML system for predicting 30-day hospital readmission risk using credentialed EHR data. Built with Hexagonal Architecture and explicit data leakage prevention for clinical validity.
+Predict medical appointment no-shows at booking time so clinic outreach teams can target reminders, recover slots, and reduce revenue loss. Built with Hexagonal Architecture, calibration-focused modeling, and explicit data leakage prevention.
 
 [![Python 3.12+](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/downloads/)
-[![Tests](https://img.shields.io/badge/tests-6/6%20passing-success)](./tests/)
+[![Tests](https://img.shields.io/badge/tests-passing-success)](./tests/)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+
+> **Disclaimer:** This project uses the [Kaggle Medical Appointments](https://www.kaggle.com/datasets/joniarroba/noshowappointments) public benchmark dataset. It is not connected to any health system or employer data.
 
 ---
 
 ## Project Overview
 
-This system predicts hospital readmission risk for patients at the point of discharge. The model uses only pre-discharge clinical features to ensure predictions reflect information genuinely available to clinicians at decision time. The baseline readmission rate in our cohort is approximately 17.5%, aligning with national benchmarks for 30-day unplanned readmissions.
+An outreach team at a clinic wants to reduce appointment no-shows. Each morning, they need a ranked **daily call list** of patients most likely to miss their upcoming appointments, so they can proactively call and confirm or reschedule.
 
-The architecture enforces strict separation between domain logic (business rules, risk scoring) and infrastructure (data loading, ML models). This enables clinical validation independent of specific data sources or modeling frameworks.
+This system:
+1. Predicts no-show probability using only **scheduling-time features** (no post-appointment data)
+2. Ranks patients by risk → generates a **capacity-constrained top-K call list**
+3. Explains each prediction with **SHAP** — framed as an operations problem, not a clinical one
+4. Reports **fairness metrics** (FPR/FNR + calibration) across demographic slices
+
+### Key Finding
+
+> **"This is an operations problem, not a clinical one."** Lead time and age dominate predictions. Clinical features (hypertension, diabetes, handicap) contribute minimally. Scheduling practices drive no-shows more than patient health conditions.
 
 ---
 
 ## Architecture
 
-**Hexagonal (Ports and Adapters) Design:**
+**Hexagonal (Ports & Adapters):**
 
 ```
-patient-readmission-risk-engine/
-├── domain/                 # Pure Python business logic
-│   ├── models.py          # Patient, Encounter, RiskOutcome entities
-│   ├── ports.py           # PatientDataRepository, RiskPredictorPort interfaces
-│   ├── services.py        # Baseline risk assessment logic
-│   └── exceptions.py      # DataLeakageError, domain-specific errors
-├── adapters/              # External system connections
-│   ├── data/              # CSV, database repository implementations
-│   ├── ml/                # XGBoost, model training adapters
-│   └── visualization/     # Streamlit, plotting adapters
-├── application/           # Use case orchestration
-│   └── use_cases.py       # train_model(), predict_readmission_risk()
-└── tests/                 # Pytest suite with property-based tests
+healthcare-noshow-predictor/
+├── domain/                 # Pure Python — zero external imports
+│   ├── models.py          # Patient, Appointment, NoShowOutcome
+│   ├── ports.py           # AppointmentRepository, NoShowPredictorPort
+│   ├── services.py        # Baseline no-show risk heuristic
+│   └── exceptions.py      # DataLeakageError, domain errors
+├── adapters/              # External connections
+│   ├── data/              # KaggleAppointmentCSVRepository
+│   ├── ml/                # Logistic, XGBoost, CalibratedXGBoost
+│   └── visualization/     # Streamlit components
+├── application/           # Orchestration (composition root)
+│   └── use_cases.py       # train_model(), predict_no_show()
+├── tests/                 # Unit + property-based (Hypothesis)
+├── notebooks/             # EDA only — no production logic
+├── docs/adr/              # 13 Architecture Decision Records
+└── reports/               # EDA gate, model metrics, fairness
 ```
 
-**Dependency Rule:** All dependencies point inward. The domain layer imports nothing from adapters or application. This makes the business logic testable in isolation and swappable (CSV to database, XGBoost to neural net) without touching domain code.
+**Dependency rule:** All dependencies point inward. Domain imports nothing from adapters or application.
+
+---
+
+## Dataset
+
+| Property | Value |
+|----------|-------|
+| Source | [Kaggle Medical Appointments](https://www.kaggle.com/datasets/joniarroba/noshowappointments) |
+| File | `KaggleV2-May-2016.csv` |
+| Rows | 110,527 appointments |
+| Patients | 62,299 unique (39% have multiple appointments) |
+| Target | No-show rate: **20.2%** |
+| Period | April 29 – June 8, 2016 |
+
+**Leakage rule:** All features must be knowable at scheduling time. `DataLeakageError` raised if post-appointment features detected.
+
+**SMS confound:** SMS_received=1 correlates with *higher* no-show rate (Simpson's paradox). SMS is sent as intervention to high-risk patients with longer lead times. Included as feature with documented caveat — not a causal predictor. See [ADR-006](docs/adr/ADR-006-sms-confound.md).
+
+---
+
+## EDA Gate Results
+
+| Gate | Criterion | Result | Status |
+|------|-----------|--------|--------|
+| Target rate | 15–30% | 20.2% | ✅ |
+| Logistic AUC | ≥ 0.65 | 0.6558 | ✅ |
+| Feature dominance | No single >80% | max 32.9% | ✅ |
+| Missing values | 0 | 0 | ✅ |
+| Volume | ≥ 50k | 110,527 | ✅ |
+
+Full report: [`reports/eda_gate.md`](reports/eda_gate.md)
+
+---
+
+## Model Lineup
+
+| Model | Purpose | Identity |
+|-------|---------|----------|
+| Logistic Regression | Linear baseline | Interpretable, calibrated by default |
+| XGBoost | Nonlinear gains | How much does tree-based modeling buy? |
+| Calibrated XGBoost | Probability quality | **This project's differentiator** — isotonic calibration for ranked call lists |
+
+**Evaluation:** AUC, F1, Brier score, calibration curve, precision@K
+
+**Validation:** 5-fold GroupKFold (by PatientId) + temporal holdout (June). See [ADR-011](docs/adr/ADR-011-split-strategy.md).
+
+---
+
+## Business Impact Model
+
+```
+recoverable_slots = top_K × precision_at_K
+cost_per_noshow   = $200 (primary care literature estimate — assumption labeled)
+monthly_value     = recoverable_slots × $200 × 22 working_days
+```
 
 ---
 
 ## Technology Stack
 
-### Core Technologies
-- **Python 3.12** - Type-safe, modern language features
-- **XGBoost** - Gradient boosting for tabular clinical data
-- **MLflow** - Experiment tracking, model versioning
-- **SHAP** - Explainability for clinical stakeholders
-
-### Data Science Tools
-- **pandas** - EHR data manipulation
-- **scikit-learn** - Preprocessing, evaluation metrics
-- **Hypothesis** - Property-based testing for domain invariants
-
-### Software Engineering Tools
-- **pytest** - Test-driven development framework
-- **Black** - Opinionated code formatting
-- **Mypy** - Static type checking with `--strict` mode
-- **Ruff** - Fast linting
-- **pre-commit** - Automated quality gates
+| Category | Tools |
+|----------|-------|
+| Language | Python 3.12+ |
+| ML | scikit-learn, XGBoost |
+| Explainability | SHAP |
+| Testing | pytest, Hypothesis (property-based) |
+| Quality | black, isort, mypy (strict), ruff, pre-commit |
+| CI | GitHub Actions (lint, test, security) |
 
 ---
 
-## Setup Instructions
+## Setup
 
-### Prerequisites
-- Python 3.12+
-- Conda or Mamba (recommended)
-
-### Installation
-
-1. Clone the repository:
 ```bash
-git clone <repository-url>
-cd patient-readmission-risk-engine
-```
-
-2. Create and activate the Conda environment:
-```bash
-conda env create -f environment.yml
-conda activate patient-readmission-ml
-```
-
-3. Install pre-commit hooks:
-```bash
+git clone https://github.com/tirthjoship/healthcare-noshow-predictor.git
+cd healthcare-noshow-predictor
+pip install -e ".[dev]"
 pre-commit install
-```
 
-4. Verify setup:
-```bash
-pytest tests/ -v
-```
+# Place dataset
+# Download from Kaggle → data/raw/KaggleV2-May-2016.csv
 
-Expected output: `6 passed in 0.01s`
+# Run tests
+make test
 
----
-
-## Data Leakage Prevention Protocol
-
-**The Leakage Shield:** This project implements `DataLeakageError` as a domain-level exception that halts execution if post-discharge features are detected. This guarantees clinical validity.
-
-**Prohibited Features:**
-- Post-discharge medications
-- Readmission diagnoses
-- Actual length of stay (only *scheduled* LOS is permitted)
-- Follow-up appointment data
-- Discharge status
-
-**Permitted Pre-Discharge Features:**
-- Patient demographics (age, gender, insurance type)
-- Admission type (Emergency, Elective, Urgent)
-- Primary diagnosis at admission (ICD-10 code)
-- Comorbidity count at admission
-- Scheduled length of stay
-- Prior admission count (historical data)
-
-The `Encounter` domain model physically cannot contain post-discharge data. This structural guarantee prevents accidental leakage during feature engineering.
-
----
-
-## Testing
-
-Run the full test suite:
-```bash
-pytest tests/ -v
-```
-
-Run with coverage:
-```bash
-pytest tests/ --cov=domain --cov=adapters --cov=application --cov-report=term-missing
-```
-
-Run property-based tests (requires `hypothesis`):
-```bash
-pytest tests/test_properties.py -v
+# Full quality check
+make check
 ```
 
 ---
 
 ## Project Status
 
-**Current Phase:** Phase 2 - Integrity Audit Complete
-
-| Milestone | Status |
-|-----------|--------|
-| Phase 1: Infrastructure & Hexagonal Architecture | ✅ Complete |
-| Phase 2: Domain Models & Leakage Prevention | ✅ Complete |
-| Phase 3: Adapter Implementation & ML Training | 🔄 In Progress |
-| Phase 4: SHAP Explainability & Streamlit Dashboard | 📋 Planned |
-| Phase 5: Cloud Deployment (AWS/Azure) | 📋 Planned |
+| Phase | Description | Status |
+|-------|-------------|--------|
+| 0 | EDA gate — dataset validation | ✅ PASSED |
+| 0.5 | Domain pivot — readmission → no-show | ✅ Complete (18 tests) |
+| 1 | Adapters + model training | 🔄 Next |
+| 2 | SHAP, fairness, Streamlit, business impact | 📋 Planned |
 
 ---
 
-## UBC MDS Alignment
+## Architecture Decision Records
 
-This project demonstrates principles from the UBC Master of Data Science program:
+13 ADRs in [`docs/adr/`](docs/adr/):
 
-| Concept | MDS Course |
-|---------|------------|
-| Hexagonal Architecture, TDD, reproducibility | DSCI 522 (Workflows) |
-| Classification models, evaluation metrics | DSCI 571 (Supervised Learning I) |
-| Feature selection, leakage prevention | DSCI 573 (Feature and Model Selection) |
-| Clinical validity, stakeholder communication | DSCI 542 (Communication and Argumentation) |
-| Hypothesis testing, statistical inference | DSCI 552/553 (Statistical Inference) |
-
----
-
-## Business Impact
-
-**Clinical Problem:** Hospital readmissions within 30 days of discharge are a key quality metric and cost driver. CMS penalizes hospitals with excess readmissions. Accurate risk prediction at discharge enables proactive interventions.
-
-**Model Goal:** Flag high-risk patients for case management, discharge planning, and follow-up scheduling. A successful model reduces readmissions by 10-15%, saving $10,000+ per avoided readmission.
-
-**Stakeholders:**
-- Clinical: Discharge planners, case managers, attending physicians
-- Operational: Hospital administrators, quality improvement teams
-- Financial: Revenue cycle, value-based care contracts
+| ADR | Decision |
+|-----|----------|
+| [001](docs/adr/ADR-001-pivot-to-noshow.md) | Pivot from readmission to no-show |
+| [002](docs/adr/ADR-002-primary-persona.md) | Primary persona: outreach team |
+| [003](docs/adr/ADR-003-daily-call-list.md) | Daily call list intervention |
+| [004](docs/adr/ADR-004-revenue-based-impact.md) | Revenue-based impact ($200/slot) |
+| [005](docs/adr/ADR-005-capacity-constrained-topk.md) | Capacity-constrained top-K threshold |
+| [006](docs/adr/ADR-006-sms-confound.md) | SMS confound documentation |
+| [007](docs/adr/ADR-007-target-encoding.md) | Target encoding (train-only) |
+| [008](docs/adr/ADR-008-model-lineup.md) | Logistic → XGBoost → Calibrated XGBoost |
+| [009](docs/adr/ADR-009-fairness-reporting.md) | FPR/FNR + calibration per slice |
+| [010](docs/adr/ADR-010-streamlit-demo.md) | Call list + SHAP drill-down demo |
+| [011](docs/adr/ADR-011-split-strategy.md) | GroupKFold + temporal holdout |
+| [012](docs/adr/ADR-012-shap-narrative.md) | "Operations, not clinical" framing |
+| [013](docs/adr/ADR-013-repo-rename.md) | Repo rename to healthcare-noshow-predictor |
 
 ---
 
-## Contributing
+## Limitations
 
-This is a portfolio project demonstrating production-grade ML systems engineering for healthcare applications. For questions or collaboration, please open an issue.
-
----
-
-## License
-
-MIT License. See `LICENSE` file for details.
+- **Public benchmark data** — not production clinical data
+- **SMS confound** — SMS_received coefficient is not causal (Simpson's paradox)
+- **Narrow time window** — dataset covers ~6 weeks (April–June 2016)
+- **Single clinic system** — Vitória, Brazil; may not generalize to other geographies
+- **No cost optimization** — threshold is capacity-based, not cost-optimized
 
 ---
 
@@ -197,5 +190,8 @@ MIT License. See `LICENSE` file for details.
 UBC Master of Data Science
 Former Data Systems Analyst, Vancouver General Hospital
 
-Portfolio: [GitHub Profile]
-LinkedIn: [Profile Link]
+---
+
+## License
+
+MIT License. See [`LICENSE`](LICENSE) for details.

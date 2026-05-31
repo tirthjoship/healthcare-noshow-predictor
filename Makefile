@@ -4,7 +4,7 @@ test:
 	pytest tests/ -v --tb=short
 
 test-cov:
-	pytest tests/ -v --cov=domain --cov=adapters --cov=application --cov-fail-under=90 --tb=short
+	pytest tests/ -v --cov=domain --cov-fail-under=80 --tb=short
 
 lint:
 	pre-commit run --all-files

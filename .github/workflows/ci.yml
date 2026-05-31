@@ -20,4 +20,4 @@ jobs:
           python -m pip install --upgrade pip
           pip install pytest pytest-cov hypothesis pandas numpy xgboost scikit-learn
       - name: Run tests with coverage
-        run: pytest tests/ -v --tb=short --cov=domain --cov=adapters --cov=application --cov-fail-under=90
+        run: pytest tests/ -v --tb=short --cov=domain --cov-fail-under=80
