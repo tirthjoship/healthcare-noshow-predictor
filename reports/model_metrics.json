@@ -1,0 +1,55 @@
+{
+  "dataset": "KaggleV2-May-2016.csv",
+  "n_rows": 110527,
+  "n_patients": 62299,
+  "validation": {
+    "groupkfold": {
+      "logistic": {
+        "auc": "0.6565 +/- 0.0045",
+        "f1": "0.4005 +/- 0.0029",
+        "brier": "0.1550 +/- 0.0024",
+        "precision_at_k": "0.3800 +/- 0.1122",
+        "ece": "0.0245 +/- 0.0018"
+      },
+      "xgboost": {
+        "auc": "0.7236 +/- 0.0033",
+        "f1": "0.4459 +/- 0.0064",
+        "brier": "0.2144 +/- 0.0009",
+        "precision_at_k": "0.5400 +/- 0.0917",
+        "ece": "0.2471 +/- 0.0046"
+      },
+      "calibrated_xgboost": {
+        "auc": "0.7237 +/- 0.0031",
+        "f1": "0.4453 +/- 0.0065",
+        "brier": "0.1452 +/- 0.0017",
+        "precision_at_k": "0.4800 +/- 0.0812",
+        "ece": "0.0070 +/- 0.0011"
+      }
+    },
+    "temporal_holdout": {
+      "logistic": {
+        "auc": 0.6596,
+        "f1": 0.3856,
+        "brier": 0.1455,
+        "precision_at_k": 0.4,
+        "ece": 0.0319
+      },
+      "xgboost": {
+        "auc": 0.716,
+        "f1": 0.4165,
+        "brier": 0.2155,
+        "precision_at_k": 0.45,
+        "ece": 0.2635
+      },
+      "calibrated_xgboost": {
+        "auc": 0.7158,
+        "f1": 0.4164,
+        "brier": 0.1377,
+        "precision_at_k": 0.45,
+        "ece": 0.0156
+      },
+      "train_period": "2016-04 to 2016-05",
+      "test_period": "2016-06"
+    }
+  }
+}

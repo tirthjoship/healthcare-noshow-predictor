@@ -63,6 +63,9 @@ class KaggleAppointmentCSVRepository:
         for col in ("ScheduledDay", "AppointmentDay"):
             df[col] = pd.to_datetime(df[col], utc=True)
 
+        # Clip negative ages to 0 (1 row in dataset has age=-1)
+        df["Age"] = df["Age"].clip(lower=0)
+
         # Compute lead_time_days, clip at 0 (negative = data error)
         df["lead_time_days"] = (df["AppointmentDay"] - df["ScheduledDay"]).dt.days.clip(
             lower=0
