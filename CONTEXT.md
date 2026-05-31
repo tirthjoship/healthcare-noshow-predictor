@@ -120,44 +120,96 @@ Output: `docs/BUSINESS_IMPACT.md`
 ## 8. Success Criteria
 
 - [x] EDA gate GO
-- [ ] KaggleAppointmentCSVRepository adapter
-- [ ] Logistic + XGBoost + Calibrated XGBoost trained
-- [ ] Metrics in `reports/model_metrics.json` (AUC, F1, Brier, calibration)
-- [ ] GroupKFold + temporal holdout results
+- [x] KaggleAppointmentCSVRepository adapter (leakage guard, date filtering)
+- [x] Logistic + XGBoost + Calibrated XGBoost trained
+- [x] Metrics in `reports/model_metrics.json` (AUC, F1, Brier, ECE, precision@K)
+- [x] GroupKFold (5-fold) + temporal holdout (June) results
+- [x] README rebranded with disclaimer + real metrics
+- [ ] Post-implementation review (feature sufficiency, thresholds)
 - [ ] SHAP global + 3 local cases
 - [ ] Fairness slice table in `reports/fairness.md`
 - [ ] Streamlit demo (call list + drill-down)
 - [ ] `docs/BUSINESS_IMPACT.md`
-- [ ] README rebranded with disclaimer
 
 ---
 
-## 9. Session Playbook
+## 9. Phase 1 Results — Key Findings
 
-### Session 1 (DONE)
+### Model Metrics (5-fold GroupKFold CV)
+
+| Model | AUC | Brier | ECE | Precision@20 |
+|-------|-----|-------|-----|-------------|
+| Logistic | 0.657 ± 0.005 | 0.155 ± 0.002 | 0.025 ± 0.002 | 0.38 ± 0.11 |
+| XGBoost | 0.724 ± 0.003 | 0.214 ± 0.001 | 0.247 ± 0.005 | 0.54 ± 0.09 |
+| **Calibrated XGBoost** | **0.724 ± 0.003** | **0.145 ± 0.002** | **0.007 ± 0.001** | **0.48 ± 0.08** |
+
+### Key Observations
+
+1. **Calibration identity confirmed** — same AUC, 32% lower Brier, 97% lower ECE
+2. **XGBoost gains 10% AUC** over logistic (0.724 vs 0.657) — nonlinearity helps
+3. **Precision@20 is moderate** (0.48-0.54) — call list will have ~50% hit rate
+4. **Temporal holdout stable** — metrics consistent with CV (no temporal drift)
+5. **Data fix:** 1 row with age=-1 clipped to 0 in adapter
+
+### Flagged for Review (Phase 1.5)
+
+- Feature sufficiency: 10 features may be enough (AUC 0.724 matches literature)
+- Precision@20 variance is high (±0.08-0.11) — K=20 may be too small for stable estimates
+- Calibrated XGBoost has slightly LOWER precision@20 than uncalibrated (0.48 vs 0.54) — investigate ranking vs calibration tradeoff
+- Day-of-week and prior no-show count could add signal (not yet engineered)
+
+---
+
+## 10. Recalibrated Phase Plan
+
+### Phase 1.5: Post-Implementation Review (optional, can merge into Phase 2)
+- Review flagged items from Phase 1 findings
+- Decide if feature engineering iteration needed before SHAP
+- If precision@20 story is weak, adjust K or add features
+
+### Phase 2: SHAP + Fairness (next session)
+- SHAP global bar chart — "operations not clinical" narrative
+- 3 local SHAP examples (young/long lead, elderly/same-day, SMS confound)
+- Fairness: FPR/FNR + calibration per slice (Gender, Age band, Neighbourhood)
+- `reports/fairness.md`
+
+### Phase 3: Streamlit + Business Impact (final session)
+- Streamlit: daily call list landing + SHAP drill-down
+- `docs/BUSINESS_IMPACT.md` with real precision@K numbers
+- Final README polish, remove any readmission references
+- Update `career-ops/cv.md` with verified metrics
+
+---
+
+## 11. Session Log
+
+### Session 1 (2026-05-30) — DONE
 ```text
-Phase 0 EDA gate on data/raw/KaggleV2-May-2016.csv.
-Domain pivot from readmission to no-show.
-13 ADRs recorded. CONTEXT.md updated.
+Phase 0 EDA gate on data/raw/KaggleV2-May-2016.csv — all 5 gates PASS.
+Domain pivot from readmission to no-show — 26 tests.
+13 ADRs recorded via grill-me session.
+Repo renamed to healthcare-noshow-predictor.
 ```
 
-### Session 2
+### Session 1 continued (2026-05-30) — DONE
 ```text
-Build KaggleAppointmentCSVRepository adapter.
-Train Logistic + XGBoost + Calibrated XGBoost.
-GroupKFold CV + temporal holdout. Save reports/model_metrics.json.
+Phase 1 adapters + training pipeline.
+6 adapter files, 4 test files, 65 tests green.
+3 models: Logistic (AUC 0.657), XGBoost (0.724), Calibrated XGBoost (0.724, ECE 0.007).
+Design spec + implementation plan written and executed via subagent-driven-development.
+PR #3 merged to main. CI green (Test + Lint).
 ```
 
-### Session 3
+### Session 3 (next)
 ```text
-SHAP (global + 3 local), fairness report, Streamlit demo.
-docs/BUSINESS_IMPACT.md, README rebrand.
-Remove readmission references unless marked future work.
+Phase 1.5 review + Phase 2 SHAP/fairness.
+Or skip 1.5 and go straight to SHAP if metrics look sufficient.
 ```
 
 ---
 
-## 10. CV Update Rule
+## 12. CV Update Rule
 
-Only update `career-ops/cv.md` after metrics exist in `reports/`.
-Replace "Healthcare Readmission Risk Engine" bullet with no-show wording + real AUC.
+Only update `career-ops/cv.md` after Phase 2 fairness report exists.
+Replace "Healthcare Readmission Risk Engine" with:
+> Built calibrated no-show predictor (AUC 0.72, ECE 0.007) for clinic outreach teams; 65 tests, hexagonal architecture, GroupKFold + temporal validation.
