@@ -5,6 +5,7 @@ from datetime import datetime
 import pytest
 
 from adapters.ml.logistic_predictor import LogisticPredictor
+from adapters.ml.xgboost_predictor import XGBoostPredictor
 from domain.models import Appointment, NoShowOutcome, Patient
 
 _SCHEDULED = datetime(2016, 1, 1, 8, 0, 0)
@@ -121,6 +122,61 @@ class TestLogisticPredictor:
         """Calling predict_no_show before train must raise RuntimeError."""
         predictor = LogisticPredictor()
         test_appt = _make_appointment(appointment_id="TEST-5", patient_id="PTEST-5")
+
+        with pytest.raises(RuntimeError):
+            predictor.predict_no_show(test_appt)
+
+
+class TestXGBoostPredictor:
+    def test_train_and_predict(self) -> None:
+        """Train on fixture data; predict returns a NoShowOutcome."""
+        appointments, labels = _training_data()
+        predictor = XGBoostPredictor()
+        predictor.train(appointments, labels)
+
+        test_appt = _make_appointment(appointment_id="XGB-1", patient_id="PXGB-1")
+        result = predictor.predict_no_show(test_appt)
+
+        assert isinstance(result, NoShowOutcome)
+        assert result.appointment_id == "XGB-1"
+
+    def test_prediction_score_in_range(self) -> None:
+        """Predicted risk score must be in [0.0, 1.0]."""
+        appointments, labels = _training_data()
+        predictor = XGBoostPredictor()
+        predictor.train(appointments, labels)
+
+        test_appt = _make_appointment(appointment_id="XGB-2", patient_id="PXGB-2")
+        result = predictor.predict_no_show(test_appt)
+
+        assert 0.0 <= result.risk_score <= 1.0
+
+    def test_prediction_has_valid_category(self) -> None:
+        """Risk category must be one of the three valid strings."""
+        appointments, labels = _training_data()
+        predictor = XGBoostPredictor()
+        predictor.train(appointments, labels)
+
+        test_appt = _make_appointment(appointment_id="XGB-3", patient_id="PXGB-3")
+        result = predictor.predict_no_show(test_appt)
+
+        assert result.risk_category in _VALID_CATEGORIES
+
+    def test_prediction_model_version(self) -> None:
+        """Model version must be 'xgboost-v1'."""
+        appointments, labels = _training_data()
+        predictor = XGBoostPredictor()
+        predictor.train(appointments, labels)
+
+        test_appt = _make_appointment(appointment_id="XGB-4", patient_id="PXGB-4")
+        result = predictor.predict_no_show(test_appt)
+
+        assert result.model_version == "xgboost-v1"
+
+    def test_predict_without_train_raises(self) -> None:
+        """Calling predict_no_show before train must raise RuntimeError."""
+        predictor = XGBoostPredictor()
+        test_appt = _make_appointment(appointment_id="XGB-5", patient_id="PXGB-5")
 
         with pytest.raises(RuntimeError):
             predictor.predict_no_show(test_appt)
