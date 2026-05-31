@@ -1,7 +1,6 @@
 """Tests for adapters/ml/evaluation.py — evaluate_model metrics."""
 
 import numpy as np
-import pytest
 
 from adapters.ml.evaluation import evaluate_model
 

@@ -2,7 +2,6 @@
 
 from datetime import datetime
 
-import numpy as np
 import pytest
 
 from adapters.ml.feature_encoder import FeatureEncoder

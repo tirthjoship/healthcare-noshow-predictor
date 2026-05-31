@@ -49,7 +49,7 @@ class FeatureEncoder:
         self._neighbourhood_map = {
             nb: float(np.mean(vals)) for nb, vals in neighbourhood_totals.items()
         }
-        all_labels = [float(l) for l in labels]
+        all_labels = [float(lb) for lb in labels]
         self._global_mean = float(np.mean(all_labels)) if all_labels else 0.0
 
     def transform(self, appointments: list[Appointment]) -> np.ndarray:

@@ -3,12 +3,12 @@
 import json
 from datetime import datetime
 from pathlib import Path
+from typing import Any
 
 import numpy as np
 from sklearn.model_selection import GroupKFold
 
 from adapters.ml.evaluation import evaluate_model
-from adapters.ml.feature_encoder import FeatureEncoder
 from domain.models import Appointment, NoShowOutcome
 from domain.ports import AppointmentRepository, NoShowPredictorPort
 
@@ -26,7 +26,7 @@ def train_and_evaluate(
     predictor_factories: dict[str, type],
     output_path: Path,
     k: int = 20,
-) -> dict:
+) -> dict[str, Any]:
     """Train all models with GroupKFold CV + temporal holdout.
 
     Args:
