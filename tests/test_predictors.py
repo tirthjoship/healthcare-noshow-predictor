@@ -4,6 +4,7 @@ from datetime import datetime
 
 import pytest
 
+from adapters.ml.calibrated_predictor import CalibratedPredictor
 from adapters.ml.logistic_predictor import LogisticPredictor
 from adapters.ml.xgboost_predictor import XGBoostPredictor
 from domain.models import Appointment, NoShowOutcome, Patient
@@ -180,3 +181,46 @@ class TestXGBoostPredictor:
 
         with pytest.raises(RuntimeError):
             predictor.predict_no_show(test_appt)
+
+
+class TestCalibratedPredictor:
+    def _large_training_data(self) -> tuple[list[Appointment], list[bool]]:
+        """Generate 60 appointments for CalibratedClassifierCV (needs more data for CV)."""
+        appts: list[Appointment] = []
+        labels: list[bool] = []
+        for i in range(60):
+            appt = _make_appointment(
+                age=20 + (i % 50),
+                lead_time_days=i,
+                sms_received=i % 2,
+                neighbourhood="A" if i < 30 else "B",
+                patient_id=f"P{i}",
+                appointment_id=f"A{i}",
+            )
+            appts.append(appt)
+            labels.append(i % 3 == 0)
+        return appts, labels
+
+    def test_train_and_predict(self) -> None:
+        """Train on 60-row fixture; predict returns a NoShowOutcome."""
+        appts, labels = self._large_training_data()
+        predictor = CalibratedPredictor()
+        predictor.train(appts, labels)
+        result = predictor.predict_no_show(appts[0])
+        assert isinstance(result, NoShowOutcome)
+
+    def test_prediction_score_in_range(self) -> None:
+        """Calibrated risk score must be in [0.0, 1.0]."""
+        appts, labels = self._large_training_data()
+        predictor = CalibratedPredictor()
+        predictor.train(appts, labels)
+        result = predictor.predict_no_show(appts[0])
+        assert 0.0 <= result.risk_score <= 1.0
+
+    def test_model_version(self) -> None:
+        """Model version must be 'calibrated-xgboost-v1'."""
+        appts, labels = self._large_training_data()
+        predictor = CalibratedPredictor()
+        predictor.train(appts, labels)
+        result = predictor.predict_no_show(appts[0])
+        assert result.model_version == "calibrated-xgboost-v1"
