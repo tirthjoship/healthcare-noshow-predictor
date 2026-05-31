@@ -9,7 +9,6 @@ from domain.exceptions import InvalidAppointmentDataError, InvalidNoShowPredicti
 from domain.models import Appointment, NoShowOutcome, Patient
 from domain.services import baseline_no_show_risk_flag
 
-
 # ── Strategies ───────────────────────────────────────────────────────
 
 valid_gender = st.sampled_from(["M", "F"])

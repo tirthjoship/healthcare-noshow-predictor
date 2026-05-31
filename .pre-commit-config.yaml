@@ -26,7 +26,8 @@ repos:
     hooks:
       - id: mypy
         args: ["--strict", "--config-file=pyproject.toml"]
-        exclude: ^(notebooks/|audit_data\.py)
+        exclude: ^(notebooks/|audit_data\.py|tests/)
+        additional_dependencies: []
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.1.15

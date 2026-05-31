@@ -1,6 +1,7 @@
+import os
 import urllib.request
 import zipfile
-import os
+
 import pandas as pd
 
 # URLs
