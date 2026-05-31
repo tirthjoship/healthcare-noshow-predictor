@@ -7,7 +7,6 @@ import pytest
 from domain.exceptions import InvalidAppointmentDataError, InvalidNoShowPredictionError
 from domain.models import Appointment, NoShowOutcome, Patient
 
-
 # ── Fixtures ─────────────────────────────────────────────────────────
 
 

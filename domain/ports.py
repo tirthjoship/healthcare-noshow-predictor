@@ -70,9 +70,7 @@ class NoShowPredictorPort(Protocol):
         """
         ...
 
-    def train(
-        self, appointments: list[Appointment], outcomes: list[bool]
-    ) -> None:
+    def train(self, appointments: list[Appointment], outcomes: list[bool]) -> None:
         """Train the model on historical appointments and outcomes.
 
         Args:

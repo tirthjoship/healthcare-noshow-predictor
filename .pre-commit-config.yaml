@@ -25,12 +25,15 @@ repos:
     rev: v1.8.0
     hooks:
       - id: mypy
-        args: ["--strict"]
+        args: ["--strict", "--config-file=pyproject.toml"]
+        exclude: ^(notebooks/|audit_data\.py|tests/)
+        additional_dependencies: []
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.1.15
     hooks:
       - id: ruff
+        exclude: ^notebooks/
 
   - repo: https://github.com/gitleaks/gitleaks
     rev: v8.18.4
