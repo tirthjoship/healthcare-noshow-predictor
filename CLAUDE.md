@@ -45,6 +45,7 @@ make typecheck # mypy strict
 ## Phase Status
 
 - [x] Phase 0: EDA gate — PASSED (AUC 0.6558, 20.2% no-show rate)
-- [x] Phase 0.5: Domain pivot — Appointment/NoShowOutcome, 18 tests green
-- [ ] Phase 1: Adapters + model training
+- [x] Phase 0.5: Domain pivot — Appointment/NoShowOutcome, 26 tests green
+- [x] Phase 1: Adapters + training — 65 tests, Calibrated XGBoost AUC 0.724, Brier 0.145, ECE 0.007
+- [ ] Phase 1.5: Post-implementation review (feature sufficiency, thresholds, calibration)
 - [ ] Phase 2: SHAP, fairness, Streamlit, business impact

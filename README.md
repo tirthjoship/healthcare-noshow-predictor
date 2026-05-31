@@ -92,9 +92,29 @@ Full report: [`reports/eda_gate.md`](reports/eda_gate.md)
 | XGBoost | Nonlinear gains | How much does tree-based modeling buy? |
 | Calibrated XGBoost | Probability quality | **This project's differentiator** — isotonic calibration for ranked call lists |
 
-**Evaluation:** AUC, F1, Brier score, calibration curve, precision@K
+**Evaluation:** AUC, F1, Brier score, precision@K, ECE (Expected Calibration Error)
 
 **Validation:** 5-fold GroupKFold (by PatientId) + temporal holdout (June). See [ADR-011](docs/adr/ADR-011-split-strategy.md).
+
+### Results (5-fold GroupKFold CV)
+
+| Model | AUC | F1 | Brier | ECE | Precision@20 |
+|-------|-----|-----|-------|-----|-------------|
+| Logistic | 0.6565 ± 0.0045 | 0.4005 ± 0.0029 | 0.1550 ± 0.0024 | 0.0245 ± 0.0018 | 0.38 ± 0.11 |
+| XGBoost | 0.7236 ± 0.0033 | 0.4459 ± 0.0064 | 0.2144 ± 0.0009 | 0.2471 ± 0.0046 | 0.54 ± 0.09 |
+| **Calibrated XGBoost** | **0.7237 ± 0.0031** | **0.4453 ± 0.0065** | **0.1452 ± 0.0017** | **0.0070 ± 0.0011** | **0.48 ± 0.08** |
+
+### Temporal Holdout (June 2016)
+
+| Model | AUC | F1 | Brier | ECE |
+|-------|-----|-----|-------|-----|
+| Logistic | 0.6596 | 0.3856 | 0.1455 | 0.0319 |
+| XGBoost | 0.7160 | 0.4165 | 0.2155 | 0.2635 |
+| **Calibrated XGBoost** | **0.7158** | **0.4164** | **0.1377** | **0.0156** |
+
+**Key insight:** Calibration preserves AUC (0.724) while dramatically improving probability quality — Brier drops from 0.214 to 0.145, ECE drops from 0.247 to 0.007. This matters for ranked call lists where probability ordering determines who gets called.
+
+Full metrics: [`reports/model_metrics.json`](reports/model_metrics.json)
 
 ---
 
@@ -146,8 +166,9 @@ make check
 | Phase | Description | Status |
 |-------|-------------|--------|
 | 0 | EDA gate — dataset validation | ✅ PASSED |
-| 0.5 | Domain pivot — readmission → no-show | ✅ Complete (18 tests) |
-| 1 | Adapters + model training | 🔄 Next |
+| 0.5 | Domain pivot — readmission → no-show | ✅ Complete (26 tests) |
+| 1 | Adapters + model training | ✅ Complete (65 tests, 3 models) |
+| 1.5 | Post-implementation review | 📋 Next |
 | 2 | SHAP, fairness, Streamlit, business impact | 📋 Planned |
 
 ---
