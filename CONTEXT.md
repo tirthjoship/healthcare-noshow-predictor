@@ -202,8 +202,14 @@ PR #3 merged to main. CI green (Test + Lint).
 
 ### Session 3 (next)
 ```text
-Phase 1.5 review + Phase 2 SHAP/fairness.
-Or skip 1.5 and go straight to SHAP if metrics look sufficient.
+Phase 2 SHAP + fairness report (reports/fairness.md).
+```
+
+### Session 4 — Docker + AWS S3 (see ../PORTFOLIO_TOOLS_PLAYBOOK.md)
+```text
+Add Dockerfile, docker-compose.yml, scripts/upload_artifacts.py (boto3, env AWS_PORTFOLIO_BUCKET).
+Upload model + reports/model_metrics.json to S3 after train. README sections: Docker, AWS.
+Optional: Lambda predict wrapper (P2). Skip EC2.
 ```
 
 ---
