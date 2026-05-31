@@ -123,9 +123,7 @@ class TestAppointmentProperties:
 class TestNoShowOutcomeProperties:
     @given(score=valid_risk_score, category=valid_category)
     @settings(max_examples=50)
-    def test_valid_outcome_always_constructs(
-        self, score: float, category: str
-    ) -> None:
+    def test_valid_outcome_always_constructs(self, score: float, category: str) -> None:
         outcome = NoShowOutcome(
             appointment_id="A1",
             risk_score=score,
@@ -136,9 +134,9 @@ class TestNoShowOutcomeProperties:
         assert 0.0 <= outcome.risk_score <= 1.0
 
     @given(
-        score=st.floats().filter(lambda x: x < 0.0 or x > 1.0).filter(
-            lambda x: not (x != x)  # exclude NaN
-        )
+        score=st.floats()
+        .filter(lambda x: x < 0.0 or x > 1.0)
+        .filter(lambda x: not (x != x))  # exclude NaN
     )
     @settings(max_examples=20)
     def test_invalid_score_always_rejected(self, score: float) -> None:
