@@ -44,13 +44,15 @@ def train_and_evaluate(
     n_rows = len(all_appointments)
     n_patients = len({a.patient.patient_id for a in all_appointments})
 
-    results = {
+    groupkfold_results: dict[str, Any] = {}
+    temporal_results: dict[str, Any] = {}
+    results: dict[str, Any] = {
         "dataset": "KaggleV2-May-2016.csv",
         "n_rows": n_rows,
         "n_patients": n_patients,
         "validation": {
-            "groupkfold": {},
-            "temporal_holdout": {},
+            "groupkfold": groupkfold_results,
+            "temporal_holdout": temporal_results,
         },
     }
 
@@ -84,12 +86,12 @@ def train_and_evaluate(
         metric_keys = ["auc", "f1", "brier", "precision_at_k", "ece"]
         aggregated = {}
         for key in metric_keys:
-            values = [fm[key] for fm in fold_metrics]
+            values = [float(fm[key]) for fm in fold_metrics]
             mean_val = float(np.mean(values))
             std_val = float(np.std(values))
             aggregated[key] = f"{mean_val:.4f} +/- {std_val:.4f}"
 
-        results["validation"]["groupkfold"][model_name] = aggregated
+        groupkfold_results[model_name] = aggregated
 
     # === Temporal Holdout ===
     june_start = datetime(2016, 6, 1)
@@ -110,10 +112,10 @@ def train_and_evaluate(
             )
             metrics = evaluate_model(y_test, y_prob, model_name, k=k)
             metrics.pop("model_name", None)
-            results["validation"]["temporal_holdout"][model_name] = metrics
+            temporal_results[model_name] = metrics
 
-        results["validation"]["temporal_holdout"]["train_period"] = "2016-04 to 2016-05"
-        results["validation"]["temporal_holdout"]["test_period"] = "2016-06"
+        temporal_results["train_period"] = "2016-04 to 2016-05"
+        temporal_results["test_period"] = "2016-06"
 
     # Save results
     output_path.parent.mkdir(parents=True, exist_ok=True)

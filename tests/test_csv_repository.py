@@ -2,7 +2,6 @@
 
 from datetime import datetime, timezone
 
-
 from adapters.data.csv_repository import KaggleAppointmentCSVRepository
 from domain.models import Appointment, Patient
 
