@@ -3,9 +3,9 @@ requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "patient_readmission_risk"
-version = "0.1.0"
-description = "Healthcare ML system for predicting 30-day hospital readmission risk"
+name = "healthcare_noshow_predictor"
+version = "0.2.0"
+description = "Predict medical appointment no-shows for clinic outreach teams"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
@@ -41,3 +41,8 @@ profile = "black"
 [tool.mypy]
 python_version = "3.12"
 strict = true
+exclude = ["notebooks/", "audit_data.py"]
+
+[[tool.mypy.overrides]]
+module = "tests.*"
+disallow_untyped_decorators = false

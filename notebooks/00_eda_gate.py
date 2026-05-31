@@ -10,14 +10,12 @@ from pathlib import Path
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
-import nbformat
 import numpy as np
 import pandas as pd
 import seaborn as sns
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import roc_auc_score
 from sklearn.model_selection import GroupShuffleSplit
-from sklearn.preprocessing import LabelEncoder
 
 warnings.filterwarnings("ignore")
 
@@ -55,7 +53,7 @@ df["lead_time_days"] = df["lead_time_days"].clip(lower=0)
 
 # ── 3. Target rate ──────────────────────────────────────────────────
 target_rate = df["no_show"].mean()
-print(f"\n=== TARGET RATE ===")
+print("\n=== TARGET RATE ===")
 print(f"No-show rate: {target_rate:.4f} ({target_rate*100:.1f}%)")
 
 # ── 4. Target by segment ────────────────────────────────────────────
@@ -98,7 +96,7 @@ print(neigh_noshow)
 
 # ── 7. Duplicate patients ───────────────────────────────────────────
 patient_counts = df["PatientId"].value_counts()
-print(f"\n=== DUPLICATE PATIENTS ===")
+print("\n=== DUPLICATE PATIENTS ===")
 print(f"Unique patients: {df['PatientId'].nunique():,}")
 print(f"Rows: {len(df):,}")
 print(f"Patients with >1 appointment: {(patient_counts > 1).sum():,} ({(patient_counts > 1).mean()*100:.1f}%)")
