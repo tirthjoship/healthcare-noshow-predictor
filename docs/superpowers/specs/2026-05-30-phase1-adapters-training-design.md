@@ -350,3 +350,17 @@ No new dependencies required.
 9. CI verification
 
 **Estimated subagent tasks:** 4–5 independent Sonnet subagents (steps 1–2 parallel, 3–5 parallel, 6–8 sequential).
+
+---
+
+## 12. Post-Implementation Review Phase
+
+After all models are trained and metrics saved, review these flagged items against actual findings:
+
+- **Feature sufficiency:** Are 10 features enough? Check SHAP — if all contribute, good. If some are near-zero, consider engineering new ones (day-of-week, hour-of-day, prior no-show count per patient).
+- **Risk thresholds (0.20 / 0.40):** Validate against calibration curve. Adjust if calibrated probabilities cluster differently.
+- **Calibration identity:** Confirm calibrated XGBoost has lower Brier score than uncalibrated. If not, investigate isotonic fit quality.
+- **Temporal holdout gap:** June-only test set is narrow. Document stability concern in limitations.
+- **Top-K precision:** If precision@20 is low, the daily call list story weakens — may need to adjust K or add features.
+
+This review happens AFTER implementation, not before. Findings feed into Phase 2 (SHAP/fairness) or a Phase 1.5 feature engineering iteration.
