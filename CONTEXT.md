@@ -1,6 +1,6 @@
 # CONTEXT.md — Healthcare Appointment No-Show Predictor
 
-**Repo:** `healthcare-noshow-predictor` (local folder: `patient-readmission-risk-engine` — rename pending)
+**Repo:** `healthcare-noshow-predictor`
 **Remote:** `https://github.com/tirthjoship/healthcare-noshow-predictor.git`
 **Owner:** Tirth Joshi
 **Created:** 2026-05-30

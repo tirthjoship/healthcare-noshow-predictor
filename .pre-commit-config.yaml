@@ -26,8 +26,8 @@ repos:
     hooks:
       - id: mypy
         args: ["--strict", "--config-file=pyproject.toml"]
-        exclude: ^(notebooks/|audit_data\.py|tests/|adapters/|application/|scripts/)
-        additional_dependencies: []
+        exclude: ^(notebooks/|audit_data\.py|tests/)
+        additional_dependencies: [pandas-stubs, types-requests]
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.15.15

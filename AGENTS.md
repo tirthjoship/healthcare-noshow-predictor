@@ -65,7 +65,7 @@ domain/                 Pure business logic
 adapters/               External connections
 ├── data/               KaggleAppointmentCSVRepository
 ├── ml/                 Logistic, XGBoost, CalibratedXGBoost adapters
-└── visualization/      Streamlit components
+└── visualization/      (Phase 2 — Streamlit components)
 
 application/            Orchestration
 └── use_cases.py        train_model, predict_no_show
@@ -104,7 +104,7 @@ pre-commit run --all-files
 mypy domain/ adapters/ application/ --strict
 
 # Environment
-conda activate patient-readmission
+pip install -e ".[dev]"
 ```
 
 ## Strong Preferences

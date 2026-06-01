@@ -13,8 +13,7 @@ typecheck:
 	mypy domain/ adapters/ application/ --strict
 
 setup:
-	conda env create -f environment.yml || conda env update -f environment.yml
-	conda run -n patient-readmission pip install -e ".[dev]"
+	pip install -e ".[dev]"
 	pre-commit install
 
 check: lint typecheck test-cov

@@ -30,8 +30,8 @@ For every changed file under `domain/`:
 
 If changes touch `adapters/data/`, `adapters/ml/`, or any file that handles feature columns:
 - Domain-specific leakage checks to be added after brainstorming.
-- General rule: verify that all features used are available pre-discharge only.
-- If a new data source adapter is added, verify it excludes any post-discharge information.
+- General rule: verify that all features used are available pre-appointment (at scheduling time) only.
+- If a new data source adapter is added, verify it excludes any post-appointment information.
 
 ### 4. Evaluation metric check (NON-NEGOTIABLE)
 
@@ -85,7 +85,7 @@ make typecheck  ✅ / ❌ <error> — fixed
 ✅ domain/ has zero external imports. / ❌ <file>:<line> — <violation>
 
 ### Data Integrity
-✅ No post-discharge features detected. / ❌ <file>:<line> — <risk>
+✅ No post-appointment features detected. / ❌ <file>:<line> — <risk>
 
 ### Evaluation Metrics
 ✅ Metrics appropriate for class distribution. / ❌ <file>:<line> — <issue>

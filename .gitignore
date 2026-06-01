@@ -1,7 +1,3 @@
-LOCAL_PROJECT_STORY.md
-diabetes.zip
-diabetes_data/
-
 # Data — too large for git
 data/raw/*.csv
 data/raw/*.parquet
