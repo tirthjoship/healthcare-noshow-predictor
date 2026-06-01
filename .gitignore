@@ -24,3 +24,24 @@ build/
 
 # Env
 .env
+
+# Local planning
+.kiro/
+
+# Claude local config
+.claude/settings.local.json
+
+# ML artifacts
+mlruns/
+mlflow.db
+models/
+*.pkl
+*.joblib
+
+# Cache
+.ruff_cache/
+.pytest_cache/
+.hypothesis/
+
+# Conda
+environment.yml

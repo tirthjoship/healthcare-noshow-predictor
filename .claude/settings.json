@@ -7,7 +7,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 -c \"import sys,json; d=json.loads(sys.stdin.read()); c=d.get('tool_input',{}).get('command','') or ''; reasons=[]; (reasons.append('Blocked: --no-verify bypasses pre-commit hooks. Fix the underlying issue instead.') if '--no-verify' in c else None); (reasons.append('Blocked: force-push to protected branch. Use a PR workflow instead.') if ('push' in c and '--force' in c and any(b in c for b in ['main','dev'])) else None); (reasons.append('Warning: destructive operation on data/ directory. Verify you have backups.') if ('rm' in c and 'data/' in c) else None); (print(json.dumps({'hookSpecificOutput':{'hookEventName':'PreToolUse','permissionDecision':'deny','permissionDecisionReason':reasons[0]}})) if reasons else None)\""
+            "command": "python3 -c \"import sys,json; d=json.loads(sys.stdin.read()); c=d.get('tool_input',{}).get('command','') or ''; reasons={'--no-verify':'Blocked: --no-verify bypasses pre-commit hooks. Fix the underlying issue instead.','push --force':'Blocked: force push can destroy remote history. Use --force-with-lease if necessary.','push -f':'Blocked: force push can destroy remote history. Use --force-with-lease if necessary.'}; match=next((r for k,r in reasons.items() if k in c),None); print(json.dumps({'hookSpecificOutput':{'hookEventName':'PreToolUse','permissionDecision':'deny','permissionDecisionReason':match}})) if match else None\""
           }
         ]
       }

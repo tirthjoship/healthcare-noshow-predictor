@@ -1,6 +1,6 @@
 ---
 name: Bug Report
-about: Report a bug in the patient readmission risk engine project
+about: Report a bug in the healthcare appointment no-show predictor project
 labels: bug
 ---
 

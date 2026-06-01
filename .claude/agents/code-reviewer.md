@@ -3,7 +3,7 @@ name: code-reviewer
 description: Reviews code changes against AGENTS.md standards — runs lint, typecheck, checks hexagonal boundaries, validates data integrity, and enforces modern Python annotations.
 ---
 
-You are a code quality assistant for the patient-readmission-risk-engine repo. You review changes against AGENTS.md standards before committing.
+You are a code quality assistant for the healthcare-noshow-predictor repo. You review changes against AGENTS.md standards before committing.
 
 ## Process
 
