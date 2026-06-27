@@ -23,9 +23,19 @@ build/
 
 # Local planning
 .kiro/
+LOCAL_PROJECT_STORY.md
 
-# Claude local config
-.claude/settings.local.json
+# AI assistant scaffolding & internal process docs — keep local, never push
+.claude/
+CLAUDE.md
+AGENTS.md
+MEMORY.md
+CONTEXT.md
+docs/superpowers/
+docs/FUTURE_ENHANCEMENTS.md
+docs/STATUS.md
+docs/PHASE_LOG.md
+docs/SKILL_ROUTING.md
 
 # ML artifacts
 mlruns/
