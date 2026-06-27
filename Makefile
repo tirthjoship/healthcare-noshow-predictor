@@ -4,7 +4,7 @@ test:
 	pytest tests/ -v --tb=short
 
 test-cov:
-	pytest tests/ -v --cov=domain --cov-fail-under=80 --tb=short
+	pytest tests/ -v --cov=domain --cov=adapters --cov=application --cov-fail-under=75 --tb=short
 
 lint:
 	pre-commit run --all-files
@@ -13,8 +13,7 @@ typecheck:
 	mypy domain/ adapters/ application/ --strict
 
 setup:
-	conda env create -f environment.yml || conda env update -f environment.yml
-	conda run -n patient-readmission pip install -e ".[dev]"
+	pip install -e ".[dev]"
 	pre-commit install
 
 check: lint typecheck test-cov

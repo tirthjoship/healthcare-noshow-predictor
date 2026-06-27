@@ -14,11 +14,13 @@ Predict medical appointment no-shows at booking time so clinic outreach teams ca
 
 An outreach team at a clinic wants to reduce appointment no-shows. Each morning, they need a ranked **daily call list** of patients most likely to miss their upcoming appointments, so they can proactively call and confirm or reschedule.
 
-This system:
+This system today:
 1. Predicts no-show probability using only **scheduling-time features** (no post-appointment data)
 2. Ranks patients by risk → generates a **capacity-constrained top-K call list**
-3. Explains each prediction with **SHAP** — framed as an operations problem, not a clinical one
-4. Reports **fairness metrics** (FPR/FNR + calibration) across demographic slices
+
+Planned (Phase 2 — see roadmap below):
+3. SHAP explanations per prediction — framed as an operations problem, not a clinical one ([ADR-012](docs/adr/ADR-012-shap-narrative.md))
+4. Fairness reporting (FPR/FNR + calibration) across demographic slices ([ADR-009](docs/adr/ADR-009-fairness-reporting.md))
 
 ### Key Finding
 
@@ -26,9 +28,81 @@ This system:
 
 ---
 
+## Project Journey
+
+The solid path is built and tested today. The dashed path is the planned Phase 2 scope.
+
+```mermaid
+flowchart LR
+    subgraph DONE["Built and tested - Phases 0 to 1"]
+        direction LR
+        J0["Domain pivot<br/>readmission to no-show<br/>ADR-001"]
+        J1["EDA gate<br/>20.2 pct no-show, AUC 0.656<br/>GO decision"]
+        J2["Leakage-safe features<br/>scheduling-time only<br/>DataLeakageError guard"]
+        J3["SMS confound handled<br/>Simpson paradox, documented<br/>ADR-006"]
+        J4["Validation<br/>GroupKFold by PatientId<br/>plus temporal holdout, ADR-011"]
+        J5["Model lineup<br/>LogReg, XGBoost,<br/>Calibrated XGBoost"]
+        J6["Calibration win<br/>Brier 0.214 to 0.145<br/>ECE 0.247 to 0.007"]
+        J0 --> J1 --> J2 --> J3 --> J4 --> J5 --> J6
+    end
+    subgraph PLANNED["Planned - Phase 2 - not built"]
+        direction LR
+        P1["SHAP explanations<br/>ADR-012"]
+        P2["Fairness slices<br/>ADR-009"]
+        P3["Streamlit call-list demo<br/>ADR-010"]
+        P4["Business impact model<br/>ADR-004"]
+        P1 --> P2 --> P3 --> P4
+    end
+    J6 -.-> P1
+    style PLANNED stroke-dasharray: 6 4
+    style P1 stroke-dasharray: 6 4
+    style P2 stroke-dasharray: 6 4
+    style P3 stroke-dasharray: 6 4
+    style P4 stroke-dasharray: 6 4
+```
+
+*Built today: the pivot through the calibrated model. Phase 2 explainability, fairness, and demo are designed in ADRs but not yet implemented.*
+
+---
+
 ## Architecture
 
-**Hexagonal (Ports & Adapters):**
+Hexagonal (Ports and Adapters), with all dependencies pointing inward toward the domain.
+
+```mermaid
+flowchart TB
+    subgraph APP["Application - composition root"]
+        UC["use_cases.py<br/>train_model, predict_no_show"]
+    end
+    subgraph DOMAIN["Domain - pure Python, zero external imports"]
+        DM["models.py<br/>Patient, Appointment, NoShowOutcome"]
+        DP["ports.py<br/>AppointmentRepository<br/>NoShowPredictorPort"]
+        DS["services.py<br/>baseline risk heuristic"]
+        DE["exceptions.py<br/>DataLeakageError"]
+    end
+    subgraph ADAPTERS["Adapters - external connections"]
+        AD["data<br/>Kaggle CSV repository"]
+        AM["ml<br/>Logistic, XGBoost,<br/>Calibrated XGBoost"]
+        AV["visualization<br/>Streamlit - Phase 2"]
+    end
+    UC --> DP
+    UC --> DM
+    AD -. implements .-> DP
+    AM -. implements .-> DP
+    style AV stroke-dasharray: 6 4
+```
+
+Data flow at prediction time:
+
+```mermaid
+flowchart LR
+    F["Scheduling-time features<br/>lead time, age, history"] --> R["CSV repository"]
+    R --> MO["Calibrated XGBoost"]
+    MO --> S["Per-patient no-show risk"]
+    S --> CL["Ranked daily call list<br/>top-K by risk"]
+```
+
+**Layout:**
 
 ```
 healthcare-noshow-predictor/
@@ -40,12 +114,12 @@ healthcare-noshow-predictor/
 ├── adapters/              # External connections
 │   ├── data/              # KaggleAppointmentCSVRepository
 │   ├── ml/                # Logistic, XGBoost, CalibratedXGBoost
-│   └── visualization/     # Streamlit components
+│   └── visualization/     # Streamlit components (Phase 2 — planned)
 ├── application/           # Orchestration (composition root)
 │   └── use_cases.py       # train_model(), predict_no_show()
 ├── tests/                 # Unit + property-based (Hypothesis)
 ├── notebooks/             # EDA only — no production logic
-├── docs/adr/              # 13 Architecture Decision Records
+├── docs/adr/              # 12 Architecture Decision Records
 └── reports/               # EDA gate, model metrics, fairness
 ```
 
@@ -112,13 +186,31 @@ Full report: [`reports/eda_gate.md`](reports/eda_gate.md)
 | XGBoost | 0.7160 | 0.4165 | 0.2155 | 0.2635 |
 | **Calibrated XGBoost** | **0.7158** | **0.4164** | **0.1377** | **0.0156** |
 
-**Key insight:** Calibration preserves AUC (0.724) while dramatically improving probability quality — Brier drops from 0.214 to 0.145, ECE drops from 0.247 to 0.007. This matters for ranked call lists where probability ordering determines who gets called.
+**Key insight:** Calibration preserves AUC (0.724) while improving probability quality — Brier drops from 0.214 to 0.145, ECE from 0.247 to 0.007. This matters for ranked call lists where probability ordering determines who gets called.
 
 Full metrics: [`reports/model_metrics.json`](reports/model_metrics.json)
 
 ---
 
+## Daily Call List
+
+Capacity-constrained top-K: the team states how many calls it can make, and the system returns that many highest-risk patients (ADR-005).
+
+```mermaid
+flowchart TD
+    A["Upcoming appointments<br/>for the day"] --> B["Score each with<br/>Calibrated XGBoost"]
+    B --> C["Rank patients by<br/>no-show risk, high to low"]
+    C --> D{"Within daily<br/>call capacity K?"}
+    D -->|Yes| E["Add to call list"]
+    D -->|No| F["Below cutoff - skip"]
+    E --> G["Outreach team calls<br/>the top-K patients"]
+```
+
+---
+
 ## Business Impact Model
+
+Planned for Phase 2. The intended calculation, with the cost assumption labeled:
 
 ```
 recoverable_slots = top_K × precision_at_K
@@ -134,7 +226,7 @@ monthly_value     = recoverable_slots × $200 × 22 working_days
 |----------|-------|
 | Language | Python 3.12+ |
 | ML | scikit-learn, XGBoost |
-| Explainability | SHAP |
+| Explainability | SHAP (Phase 2 — planned) |
 | Testing | pytest, Hypothesis (property-based) |
 | Quality | black, isort, mypy (strict), ruff, pre-commit |
 | CI | GitHub Actions (lint, test, security) |
@@ -175,7 +267,7 @@ make check
 
 ## Architecture Decision Records
 
-13 ADRs in [`docs/adr/`](docs/adr/):
+12 ADRs in [`docs/adr/`](docs/adr/):
 
 | ADR | Decision |
 |-----|----------|
@@ -191,7 +283,6 @@ make check
 | [010](docs/adr/ADR-010-streamlit-demo.md) | Call list + SHAP drill-down demo |
 | [011](docs/adr/ADR-011-split-strategy.md) | GroupKFold + temporal holdout |
 | [012](docs/adr/ADR-012-shap-narrative.md) | "Operations, not clinical" framing |
-| [013](docs/adr/ADR-013-repo-rename.md) | Repo rename to healthcare-noshow-predictor |
 
 ---
 

@@ -1,7 +1,3 @@
-LOCAL_PROJECT_STORY.md
-diabetes.zip
-diabetes_data/
-
 # Data — too large for git
 data/raw/*.csv
 data/raw/*.parquet
@@ -24,3 +20,34 @@ build/
 
 # Env
 .env
+
+# Local planning
+.kiro/
+LOCAL_PROJECT_STORY.md
+
+# AI assistant scaffolding & internal process docs — keep local, never push
+.claude/
+CLAUDE.md
+AGENTS.md
+MEMORY.md
+CONTEXT.md
+docs/superpowers/
+docs/FUTURE_ENHANCEMENTS.md
+docs/STATUS.md
+docs/PHASE_LOG.md
+docs/SKILL_ROUTING.md
+
+# ML artifacts
+mlruns/
+mlflow.db
+models/
+*.pkl
+*.joblib
+
+# Cache
+.ruff_cache/
+.pytest_cache/
+.hypothesis/
+
+# Conda
+environment.yml
