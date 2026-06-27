@@ -14,11 +14,13 @@ Predict medical appointment no-shows at booking time so clinic outreach teams ca
 
 An outreach team at a clinic wants to reduce appointment no-shows. Each morning, they need a ranked **daily call list** of patients most likely to miss their upcoming appointments, so they can proactively call and confirm or reschedule.
 
-This system:
+This system today:
 1. Predicts no-show probability using only **scheduling-time features** (no post-appointment data)
 2. Ranks patients by risk → generates a **capacity-constrained top-K call list**
-3. Explains each prediction with **SHAP** — framed as an operations problem, not a clinical one
-4. Reports **fairness metrics** (FPR/FNR + calibration) across demographic slices
+
+Planned (Phase 2 — see roadmap below):
+3. SHAP explanations per prediction — framed as an operations problem, not a clinical one ([ADR-012](docs/adr/ADR-012-shap-narrative.md))
+4. Fairness reporting (FPR/FNR + calibration) across demographic slices ([ADR-009](docs/adr/ADR-009-fairness-reporting.md))
 
 ### Key Finding
 
@@ -40,12 +42,12 @@ healthcare-noshow-predictor/
 ├── adapters/              # External connections
 │   ├── data/              # KaggleAppointmentCSVRepository
 │   ├── ml/                # Logistic, XGBoost, CalibratedXGBoost
-│   └── visualization/     # Streamlit components
+│   └── visualization/     # Streamlit components (Phase 2 — planned)
 ├── application/           # Orchestration (composition root)
 │   └── use_cases.py       # train_model(), predict_no_show()
 ├── tests/                 # Unit + property-based (Hypothesis)
 ├── notebooks/             # EDA only — no production logic
-├── docs/adr/              # 13 Architecture Decision Records
+├── docs/adr/              # 12 Architecture Decision Records
 └── reports/               # EDA gate, model metrics, fairness
 ```
 
@@ -134,7 +136,7 @@ monthly_value     = recoverable_slots × $200 × 22 working_days
 |----------|-------|
 | Language | Python 3.12+ |
 | ML | scikit-learn, XGBoost |
-| Explainability | SHAP |
+| Explainability | SHAP (Phase 2 — planned) |
 | Testing | pytest, Hypothesis (property-based) |
 | Quality | black, isort, mypy (strict), ruff, pre-commit |
 | CI | GitHub Actions (lint, test, security) |
@@ -175,7 +177,7 @@ make check
 
 ## Architecture Decision Records
 
-13 ADRs in [`docs/adr/`](docs/adr/):
+12 ADRs in [`docs/adr/`](docs/adr/):
 
 | ADR | Decision |
 |-----|----------|
@@ -191,7 +193,6 @@ make check
 | [010](docs/adr/ADR-010-streamlit-demo.md) | Call list + SHAP drill-down demo |
 | [011](docs/adr/ADR-011-split-strategy.md) | GroupKFold + temporal holdout |
 | [012](docs/adr/ADR-012-shap-narrative.md) | "Operations, not clinical" framing |
-| [013](docs/adr/ADR-013-repo-rename.md) | Repo rename to healthcare-noshow-predictor |
 
 ---
 
