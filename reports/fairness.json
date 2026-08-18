@@ -1,0 +1,133 @@
+{
+  "threshold": 0.22,
+  "n_total": 26451,
+  "overall": {
+    "n": 26451.0,
+    "base_rate": 0.1846,
+    "selection_rate": 0.4824,
+    "fpr": 0.4213,
+    "fnr": 0.2476,
+    "precision": 0.2879,
+    "ece": 0.0156
+  },
+  "slices": {
+    "gender": {
+      "F": {
+        "n": 17316.0,
+        "base_rate": 0.1828,
+        "selection_rate": 0.482,
+        "fpr": 0.4219,
+        "fnr": 0.249,
+        "precision": 0.2848,
+        "ece": 0.018
+      },
+      "M": {
+        "n": 9135.0,
+        "base_rate": 0.188,
+        "selection_rate": 0.483,
+        "fpr": 0.4201,
+        "fnr": 0.2452,
+        "precision": 0.2937,
+        "ece": 0.0112
+      }
+    },
+    "age_band": {
+      "0-17": {
+        "n": 6499.0,
+        "base_rate": 0.2011,
+        "selection_rate": 0.5435,
+        "fpr": 0.4736,
+        "fnr": 0.179,
+        "precision": 0.3038,
+        "ece": 0.0218
+      },
+      "18-34": {
+        "n": 5584.0,
+        "base_rate": 0.2233,
+        "selection_rate": 0.5963,
+        "fpr": 0.5093,
+        "fnr": 0.101,
+        "precision": 0.3366,
+        "ece": 0.0161
+      },
+      "35-54": {
+        "n": 7216.0,
+        "base_rate": 0.1795,
+        "selection_rate": 0.5437,
+        "fpr": 0.4867,
+        "fnr": 0.1961,
+        "precision": 0.2654,
+        "ece": 0.0178
+      },
+      "55+": {
+        "n": 7152.0,
+        "base_rate": 0.1444,
+        "selection_rate": 0.276,
+        "fpr": 0.251,
+        "fnr": 0.576,
+        "precision": 0.2219,
+        "ece": 0.0171
+      }
+    },
+    "sms_received": {
+      "no_sms": {
+        "n": 15081.0,
+        "base_rate": 0.1268,
+        "selection_rate": 0.2485,
+        "fpr": 0.1996,
+        "fnr": 0.4142,
+        "precision": 0.2988,
+        "ece": 0.0117
+      },
+      "sms": {
+        "n": 11370.0,
+        "base_rate": 0.2612,
+        "selection_rate": 0.7925,
+        "fpr": 0.7688,
+        "fnr": 0.1404,
+        "precision": 0.2833,
+        "ece": 0.0214
+      }
+    },
+    "scholarship": {
+      "none": {
+        "n": 23890.0,
+        "base_rate": 0.1819,
+        "selection_rate": 0.4753,
+        "fpr": 0.4166,
+        "fnr": 0.2609,
+        "precision": 0.2829,
+        "ece": 0.0154
+      },
+      "scholarship": {
+        "n": 2561.0,
+        "base_rate": 0.2093,
+        "selection_rate": 0.5482,
+        "fpr": 0.4657,
+        "fnr": 0.1399,
+        "precision": 0.3283,
+        "ece": 0.02
+      }
+    }
+  },
+  "disparities": {
+    "gender": {
+      "fpr_gap": 0.0018,
+      "fnr_gap": 0.0038
+    },
+    "age_band": {
+      "fpr_gap": 0.2583,
+      "fnr_gap": 0.475
+    },
+    "sms_received": {
+      "fpr_gap": 0.5692,
+      "fnr_gap": 0.2738
+    },
+    "scholarship": {
+      "fpr_gap": 0.0491,
+      "fnr_gap": 0.121
+    }
+  },
+  "holdout_period": "2016-06",
+  "threshold_rule": "F1-optimal on holdout (scan 0.10-0.90)"
+}
