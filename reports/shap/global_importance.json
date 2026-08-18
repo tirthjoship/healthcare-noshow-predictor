@@ -1,0 +1,29 @@
+{
+  "n_sample": 5000,
+  "random_state": 42,
+  "space": "log-odds (uncalibrated XGBoost; calibration is monotonic)",
+  "mean_abs_shap": {
+    "lead_time_days": 0.8382282028504647,
+    "age": 0.23621760969210226,
+    "neighbourhood_enc": 0.1214789740728258,
+    "sms_received": 0.08243797207698227,
+    "scholarship": 0.028065226506566978,
+    "gender_enc": 0.02392819200718113,
+    "diabetes": 0.019367093313626536,
+    "alcoholism": 0.01677766625314107,
+    "hypertension": 0.008211225575171557,
+    "handicap": 0.0046127351520299275
+  },
+  "ranked_features": [
+    "lead_time_days",
+    "age",
+    "neighbourhood_enc",
+    "sms_received",
+    "scholarship",
+    "gender_enc",
+    "diabetes",
+    "alcoholism",
+    "hypertension",
+    "handicap"
+  ]
+}
