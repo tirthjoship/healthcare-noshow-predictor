@@ -66,12 +66,19 @@ class KaggleAppointmentCSVRepository:
         # Clip negative ages to 0 (1 row in dataset has age=-1)
         df["Age"] = df["Age"].clip(lower=0)
 
-        # Compute lead_time_days, clip at 0 (negative = data error)
-        df["lead_time_days"] = (df["AppointmentDay"] - df["ScheduledDay"]).dt.days.clip(
-            lower=0
-        )
+        # Lead time = calendar-date difference (ADR-014). AppointmentDay is always
+        # midnight while ScheduledDay carries a time, so subtracting raw timestamps
+        # turned same-day bookings into -1 and understated every other lead by a day.
+        lead = (
+            df["AppointmentDay"].dt.normalize() - df["ScheduledDay"].dt.normalize()
+        ).dt.days
 
-        return df
+        # Appointment before booking is impossible (5 rows in the Kaggle data): drop.
+        df = df[lead >= 0].copy()
+        df["lead_time_days"] = lead[lead >= 0]
+
+        result: pd.DataFrame = df.reset_index(drop=True)
+        return result
 
     def _build_appointment(self, row: pd.Series) -> Appointment:
         patient = Patient(
