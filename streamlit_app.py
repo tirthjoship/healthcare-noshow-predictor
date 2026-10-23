@@ -7,7 +7,7 @@ cleanly on Streamlit Community Cloud without the raw Kaggle dataset:
     reports/model_metrics.json     : validation metrics (GroupKFold + temporal)
     reports/fairness.json          : threshold view + top-K-per-day capacity view
     reports/business_impact.json   : slots-first what-if at the app's operating point
-    reports/shap/global_importance.png
+    reports/shap/global_importance.json : mean |SHAP| per feature
 
 Regenerate the artifacts with:
     python scripts/run_training.py && python scripts/run_phase2.py && python scripts/export_demo.py
@@ -19,6 +19,7 @@ import json
 from pathlib import Path
 from typing import cast
 
+import altair as alt
 import pandas as pd
 import streamlit as st
 
@@ -27,7 +28,7 @@ from adapters.visualization.call_list import precision_at_capacity, rank_call_li
 ROOT = Path(__file__).resolve().parent
 DEMO_CSV = ROOT / "demo" / "scored_appointments.csv"
 REPORTS = ROOT / "reports"
-SHAP_PNG = REPORTS / "shap" / "global_importance.png"
+SHAP_JSON = REPORTS / "shap" / "global_importance.json"
 REPO_URL = "https://github.com/tirthjoship/healthcare-noshow-predictor"
 DECISION_TREE_URL = f"{REPO_URL}/blob/main/docs/DECISION_TREE.md"
 
@@ -63,14 +64,20 @@ def load_json(path: str) -> dict[str, object]:
     return cast(dict[str, object], json.loads(Path(path).read_text()))
 
 
+def fmt_day(iso: str) -> str:
+    """ISO date string to 'Wed 1 Jun 2016' for display; values stay ISO."""
+    ts = pd.Timestamp(iso)
+    return f"{ts:%a} {ts.day} {ts:%b %Y}"
+
+
 def metric_mean(value: object) -> float:
     """Model metrics store CV results as 'mean +/- sd' strings; return the mean."""
     return float(str(value).split("+/-")[0])
 
 
-st.set_page_config(page_title="No-Show Call List", page_icon="🏥", layout="wide")
+st.set_page_config(page_title="No-Show Call List", layout="wide")
 
-st.title("🏥 Appointment No-Show: Daily Call List")
+st.title("Appointment No-Show: Daily Call List")
 st.caption(
     "Public Kaggle benchmark (110K appointments, Vitória, Brazil, Apr to Jun 2016). "
     "Not connected to any health system; no real patients are identifiable."
@@ -102,18 +109,22 @@ capacity = cast("dict[str, object]", fair["capacity"])
 
 tab_start, tab_calls, tab_why, tab_fair, tab_impact, tab_how = st.tabs(
     [
-        "👋 Start here",
-        "📞 Daily call list",
-        "🔍 Why this patient?",
-        "⚖️ Fairness",
-        "📈 Impact",
-        "🧭 How we built it",
+        "Start here",
+        "Daily call list",
+        "Why this patient?",
+        "Fairness",
+        "Impact",
+        "How we built it",
     ]
 )
 
 # --------------------------------------------------------------------------- start
 with tab_start:
-    st.subheader("The problem in one line")
+    st.subheader(
+        "The problem in one line",
+        help="A no-show is a booked appointment where the patient does not come "
+        "and the slot goes unused.",
+    )
     st.markdown(
         "About **1 in 5** booked appointments end up as no-shows. A clinic outreach "
         "team can only make a limited number of reminder calls a day. **Who should "
@@ -127,7 +138,8 @@ with tab_start:
     c1.metric(
         "Ranking quality (AUC)",
         f"{metric_mean(cv['auc']):.2f}",
-        help="0.5 = coin flip, 1.0 = perfect. 5-fold, grouped by patient.",
+        help="AUC is the chance that a patient who missed ranks above one who "
+        "showed up. 0.5 = coin flip, 1.0 = perfect. 5-fold, grouped by patient.",
     )
     c2.metric(
         "Holds up on a later month",
@@ -137,22 +149,24 @@ with tab_start:
     c3.metric(
         "Calibration error (ECE)",
         f"{metric_mean(cv['ece']):.3f}",
-        help="How far predicted % is from what actually happened. Lower is better.",
+        help="Calibration means a predicted 30% really happens about 30% of the "
+        "time. This error is the average gap between predicted and actual. "
+        "Lower is better.",
     )
     c4.metric(
         "Hit rate on the call list",
         f"{float(cast(float, impact['precision_at_k'])):.0%}",
-        help="Share of the top 20 patients per day who really did not show up "
+        help="Hit rate is the share of the top 20 patients per day who really did not show up "
         "(June test data). The June no-show rate is about 18%.",
     )
 
     st.subheader("Three things we found")
     st.markdown("""
-1. **It's a scheduling problem, not a medical one.** The longer the gap between
+1. **No-shows are a scheduling problem, not a medical one.** The longer the gap between
    booking and the appointment, the more likely a no-show. Same-day bookings almost
    always show up (about 5% miss); next-day bookings miss about 21% of the time.
    Diabetes, hypertension and other conditions barely matter.
-2. **SMS reminders *look* harmful but aren't.** Patients who got an SMS missed more
+2. **SMS reminders *look* harmful, but they are not.** Patients who got an SMS missed more
    often, because the clinic sent SMS to long-lead (higher-risk) appointments. A
    selection effect, not cause and effect.
 3. **Ranking by raw risk leaves older patients behind.** Patients 55+ are about a
@@ -170,13 +184,15 @@ with tab_calls:
     left, right = st.columns([1, 2])
     with left:
         days = sorted(df["appointment_day"].unique().tolist())
-        day = st.selectbox("Appointment day", days, index=0)
+        day = st.selectbox("Appointment day", days, index=0, format_func=fmt_day)
         day_df = df[df["appointment_day"] == day]
         k = st.slider(
             "Calls the team can make today",
             min_value=1,
             max_value=int(min(50, len(day_df))),
             value=int(min(10, len(day_df))),
+            help="Slots per day means how many reminder calls the team can make. "
+            "The list shows that many patients, highest risk first.",
         )
         ranked = rank_call_list(day_df.to_dict("records"), k)
         hits = sum(bool(r["actual_no_show"]) for r in ranked)
@@ -190,13 +206,15 @@ with tab_calls:
             "Hit rate vs calling at random",
             f"{precision_at_capacity(ranked):.0%}",
             delta=f"{precision_at_capacity(ranked) - base_rate:+.0%} vs random",
+            help="Hit rate is the share of called patients who really missed. "
+            "Random calling would reach the day's overall no-show rate.",
         )
         st.caption(
             f"Demo sample: {len(day_df)} of that day's appointments. "
             f"Random calling would reach about {base_rate:.0%}."
         )
     with right:
-        st.subheader(f"Who to call first on {day}")
+        st.subheader(f"Who to call first on {fmt_day(day)}")
         ranked_df = pd.DataFrame(ranked)[
             [
                 "age",
@@ -218,7 +236,7 @@ with tab_calls:
         )
         ranked_df["SMS sent"] = ranked_df["SMS sent"].map({1: "yes", 0: "no"})
         ranked_df["Actually missed?"] = ranked_df["Actually missed?"].map(
-            {1: "✅ missed", 0: "showed up"}
+            {1: "Missed", 0: "Showed up"}
         )
         st.dataframe(
             ranked_df,
@@ -237,9 +255,33 @@ with tab_calls:
 
 # --------------------------------------------------------------------------- why
 with tab_why:
-    st.subheader("What drives risk overall")
-    if SHAP_PNG.exists():
-        st.image(str(SHAP_PNG), width="stretch")
+    st.subheader(
+        "What drives no-show risk overall",
+        help="SHAP is a method that splits each prediction into the share "
+        "contributed by each factor. Longer bars mean the factor moves "
+        "predictions more, on average.",
+    )
+    if SHAP_JSON.exists():
+        shap_raw = cast(
+            "dict[str, float]",
+            load_json(str(SHAP_JSON))["mean_abs_shap"],
+        )
+        shap_df = pd.DataFrame(
+            {
+                "Factor": [FEATURE_LABELS.get(f, f) for f in shap_raw],
+                "Average influence": list(shap_raw.values()),
+            }
+        )
+        st.altair_chart(
+            alt.Chart(shap_df)
+            .mark_bar()
+            .encode(
+                x=alt.X("Average influence:Q", title="Average influence on risk"),
+                y=alt.Y("Factor:N", sort="-x", title=None),
+                tooltip=["Factor", alt.Tooltip("Average influence:Q", format=".3f")],
+            ),
+            width="stretch",
+        )
     st.markdown(
         "Booking lead time dominates, then age. Clinical conditions sit near zero "
         "(ADR-012)."
@@ -247,7 +289,10 @@ with tab_why:
     st.divider()
     st.subheader("Why is this patient on the list?")
     day2 = st.selectbox(
-        "Appointment day ", sorted(df["appointment_day"].unique()), key="whyday"
+        "Appointment day",
+        sorted(df["appointment_day"].unique()),
+        key="whyday",
+        format_func=fmt_day,
     )
     day2_df = df[df["appointment_day"] == day2].sort_values(
         "risk_score", ascending=False
@@ -258,7 +303,10 @@ with tab_why:
         for i, r in enumerate(day2_df.itertuples())
     ]
     choice = st.selectbox(
-        "Patient (ranked by risk)", range(len(labels)), format_func=labels.__getitem__
+        "Patient (ranked by risk)",
+        range(len(labels)),
+        format_func=labels.__getitem__,
+        help="Patients on the chosen day, highest predicted risk first.",
     )
     row = day2_df.iloc[int(choice)]
     contribs = {
@@ -285,7 +333,13 @@ with tab_why:
 
 # --------------------------------------------------------------------------- fairness
 with tab_fair:
-    st.subheader("Who makes the call list? (the setting the app actually uses)")
+    st.subheader(
+        "Who makes the daily call list?",
+        help="This is the setting the app actually uses: the top "
+        f"{capacity['k']} patients per day by risk, across all June appointments. "
+        "Compare each group's share of the call list with its share of all "
+        "no-shows. A big gap means the group is under-served by the list.",
+    )
     st.caption(
         f"Top {capacity['k']} per day across all June appointments "
         f"({capacity['n_days']} days, {capacity['n_selected']} calls). "
@@ -295,16 +349,46 @@ with tab_fair:
     attr = st.selectbox(
         "Group by",
         list(cap_slices),
+        index=list(cap_slices).index("age_band") if "age_band" in cap_slices else 0,
         format_func=lambda a: SLICE_LABELS.get(a, a),
+        help="Age band is where the main finding is. Other groups look closer "
+        "to even.",
     )
     cap_df = pd.DataFrame(cap_slices[attr]).T
-    chart_df = cap_df[["share_of_no_shows", "share_of_list"]].rename(
-        columns={
-            "share_of_no_shows": "Share of all no-shows",
-            "share_of_list": "Share of the call list",
-        }
+    chart_df = (
+        cap_df[["share_of_no_shows", "share_of_list"]]
+        .rename(
+            columns={
+                "share_of_no_shows": "Share of all no-shows",
+                "share_of_list": "Share of the call list",
+            }
+        )
+        .rename_axis("Group")
+        .reset_index()
+        .melt(id_vars="Group", var_name="Measure", value_name="Share")
     )
-    st.bar_chart(chart_df, stack=False)
+    group_order = [str(g) for g in cap_df.index]
+    st.altair_chart(
+        alt.Chart(chart_df)
+        .mark_bar()
+        .encode(
+            y=alt.Y(
+                "Group:N",
+                sort=group_order,
+                title=None,
+                axis=alt.Axis(labelLimit=300, labelAngle=0),
+            ),
+            yOffset=alt.YOffset("Measure:N"),
+            x=alt.X("Share:Q", title="Share", axis=alt.Axis(format="%")),
+            color=alt.Color("Measure:N", title=None),
+            tooltip=[
+                "Group",
+                "Measure",
+                alt.Tooltip("Share:Q", format=".1%"),
+            ],
+        ),
+        width="stretch",
+    )
     age = cap_slices["age_band"]["55+"]
     st.warning(
         f"**Known limitation (ADR-013):** patients 55+ are "
@@ -347,10 +431,22 @@ with tab_impact:
     slots_month = float(cast(float, impact["recoverable_slots_per_month"]))
     c1, c2, c3 = st.columns(3)
     c1.metric(
-        "Hit rate on the list", f"{float(cast(float, impact['precision_at_k'])):.0%}"
+        "Hit rate on the list",
+        f"{float(cast(float, impact['precision_at_k'])):.0%}",
+        help="Share of the called patients who really did not show up. It ranges "
+        "from 43 to 45% depending on how tied scores are ordered.",
     )
-    c2.metric("Appointment slots per day", f"~{slots_day:.1f}")
-    c3.metric("Appointment slots per month", f"~{slots_month:.0f}")
+    c2.metric(
+        "Appointment slots per day",
+        f"~{slots_day:.1f}",
+        help="Slots per day = calls per day times the hit rate. A slot is one "
+        "appointment time that could be refilled.",
+    )
+    c3.metric(
+        "Appointment slots per month",
+        f"~{slots_month:.0f}",
+        help="Slots per day times the working days in a month.",
+    )
     cost = st.number_input(
         "Value of one recovered slot (edit to your setting)",
         min_value=0.0,
@@ -360,16 +456,19 @@ with tab_impact:
     )
     st.metric("Monthly value at that rate", f"${slots_month * cost:,.0f}")
     st.caption(
-        f"Upper bound: assumes every correctly flagged, called patient keeps or "
-        f"rebooks their slot; real conversion is lower. Hit rate source: "
-        f"{impact['precision_source']}."
+        "Upper bound: assumes every correctly flagged, called patient keeps or "
+        "rebooks their slot; real conversion is lower. "
+        f"Hit rate measured on the top {int(float(cast(float, impact['daily_call_capacity'])))} "
+        f"patients per day in the June 2016 test data ({capacity['n_days']} days, "
+        f"{capacity['n_selected']} calls)."
     )
+
 
 # --------------------------------------------------------------------------- how
 with tab_how:
     st.subheader("From raw data to this app: every decision and why")
     st.markdown("""
-| Step | What we saw | What we decided | Record |
+| Step | What we saw | What we decided | Decision record |
 |---|---|---|---|
 | Problem | Outreach teams have limited calls | Rank patients for a daily call list | ADR-001 to 003, 005 |
 | Data quality | 35% of lead times looked negative | They were same-day bookings: compute calendar-day gaps, drop 5 impossible rows | ADR-014 |
@@ -380,6 +479,10 @@ with tab_how:
 | Fairness | 55+ nearly absent from the list | Disclose now, review before real use | ADR-009, ADR-013 |
 | Impact | Dollar headline oversold it | Lead with slots; dollars editable | ADR-004 |
 """)
+    st.caption(
+        "ADR = architecture decision record, a short note explaining one decision. "
+        "All of them are in the GitHub repo."
+    )
     st.markdown(
         f"Full visual decision tree: [docs/DECISION_TREE.md]({DECISION_TREE_URL})"
     )
