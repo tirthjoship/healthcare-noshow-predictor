@@ -89,3 +89,11 @@ def test_chart_config_uses_theme_fonts_and_palette() -> None:
     assert cfg["axis"]["labelFont"] == "Inter"
     assert cfg["range"]["category"][0] == ui.ACCENT
     assert re.fullmatch(r"#[0-9A-F]{6}", ui.ACCENT)
+
+
+def test_tiles_columns_and_note_tone_and_bare_tile() -> None:
+    assert "repeat(3," in ui.tiles(["a"], columns=3)
+    assert "style=" not in ui.tiles(["a"])
+    assert 'class="note accent"' in ui.note("T", "b", tone="accent")
+    assert 'class="note"' in ui.note("T", "b")
+    assert 'class="tile bare"' in ui.tile("1", "x", bare=True)

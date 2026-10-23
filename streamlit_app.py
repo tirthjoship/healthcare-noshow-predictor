@@ -180,8 +180,8 @@ with tab_start:
             ],
             act="Pilot the list with one outreach team and track real call outcomes.",
             confidence="Moderate",
-            confidence_why="Six test days, public data from one city, and the hit "
-            "rate is 43 to 45% depending on how tied scores are ordered.",
+            confidence_why=f"{capacity['n_days']} test days, public data from one city, "
+            "and the hit rate is 43 to 45% depending on how tied scores are ordered.",
             would_change="Real call outcomes, or a different clinic population.",
         ),
         unsafe_allow_html=True,
@@ -252,10 +252,15 @@ with tab_start:
             ),
             unsafe_allow_html=True,
         )
-    st.info(
-        "**How to use this demo:** pick a day and a call capacity in *Daily call list*, "
-        "click into a patient in *Why this patient?*, then check *Fairness* and "
-        "*Impact*. *How we built it* shows every decision and why."
+    st.markdown(
+        ui.note(
+            "How to use this demo:",
+            "pick a day and a call capacity in Daily call list, click into a "
+            "patient in Why this patient?, then check Fairness and Impact. "
+            "How we built it shows every decision and why.",
+            tone="accent",
+        ),
+        unsafe_allow_html=True,
     )
 
     st.markdown(ui.layer_label("Method"), unsafe_allow_html=True)
@@ -307,7 +312,8 @@ with tab_calls:
                 confidence="Moderate",
                 confidence_why="Risk scores are calibrated, but one day of a "
                 "demo sample is a small number of patients.",
-                would_change="A different day or a different call capacity.",
+                would_change="Real call outcomes showing that patients at the top of the "
+                "list miss less often than predicted.",
             ),
             unsafe_allow_html=True,
         )
@@ -330,8 +336,9 @@ with tab_calls:
                         "Random calling would reach the day's overall no-show rate.",
                         sub=f"{(hit_rate - base_rate) * 100:+.0f} pts vs random",
                     ),
-                ]
-            ).replace("repeat(auto-fit, minmax(210px, 1fr))", "1fr"),
+                ],
+                columns=1,
+            ),
             unsafe_allow_html=True,
         )
         st.caption(
@@ -403,14 +410,15 @@ with tab_calls:
 # --------------------------------------------------------------------------- why
 with tab_why:
     shap_raw: dict[str, float] = {}
+    shap_n = 0
     if SHAP_JSON.exists():
-        shap_raw = cast(
-            "dict[str, float]",
-            load_json(str(SHAP_JSON))["mean_abs_shap"],
-        )
+        shap_doc = load_json(str(SHAP_JSON))
+        shap_raw = cast("dict[str, float]", shap_doc["mean_abs_shap"])
+        shap_n = int(cast(int, shap_doc.get("n_sample", 0)))
     order = sorted(shap_raw, key=lambda f: shap_raw[f], reverse=True)
     if len(order) >= 3:
         lead_ratio = shap_raw[order[0]] / shap_raw[order[1]]
+        second_label = FEATURE_LABELS.get(order[1], order[1]).lower()
         why_sentences = [
             f"{FEATURE_LABELS.get(order[0], order[0])} comes first, then "
             f"{FEATURE_LABELS.get(order[1], order[1]).lower()} and "
@@ -420,6 +428,7 @@ with tab_why:
         ]
     else:
         lead_ratio = 0.0
+        second_label = ""
         why_sentences = ["The factor ranking is not available in this deployment."]
     st.markdown(
         ui.bottom_line(
@@ -427,9 +436,14 @@ with tab_why:
             "Scheduling, not health conditions",
             "good",
             why_sentences,
-            act="Shorten booking lead times or add reminders for long-lead bookings.",
-            confidence="High",
-            confidence_why="The ordering is consistent across the global SHAP ranking.",
+            act="Use booking lead time as the first signal for outreach; test any "
+            "scheduling change before rolling it out.",
+            confidence="High for the top factor",
+            confidence_why=f"On a {shap_n:,}-appointment sample, lead time moves "
+            f"predictions about {lead_ratio:.0f} times as much as {second_label}; "
+            "the order of the smaller factors may shift.",
+            would_change="A model retrained on another clinic's data ranking "
+            "factors differently.",
         ),
         unsafe_allow_html=True,
     )
@@ -482,7 +496,7 @@ with tab_why:
                     ui.takeaway(
                         "Booking lead time moves predictions about "
                         f"{lead_ratio:.0f} times as much as the next factor, "
-                        "age. Clinical conditions sit near zero (ADR-012)."
+                        f"{second_label}. Clinical conditions sit near zero (ADR-012)."
                     ),
                     unsafe_allow_html=True,
                 )
@@ -589,7 +603,7 @@ with tab_fair:
             "before real use.",
             confidence="High for direction",
             confidence_why="The direction holds under every tie order; the exact "
-            "percentages are noisy over 6 days.",
+            f"percentages are noisy over {capacity['n_days']} days.",
             would_change="A per-group capacity rule, or a longer test window.",
         ),
         unsafe_allow_html=True,
@@ -635,15 +649,18 @@ with tab_fair:
         st.altair_chart(
             ui.style_chart(
                 alt.Chart(chart_df)
-                .mark_bar(cornerRadiusEnd=3)
+                .mark_bar(cornerRadiusEnd=3, height={"band": 0.9})
                 .encode(
                     y=alt.Y(
                         "Group:N",
                         sort=group_order,
                         title=None,
                         axis=alt.Axis(labelLimit=300, labelAngle=0),
+                        scale=alt.Scale(paddingInner=0.3),
                     ),
-                    yOffset=alt.YOffset("Measure:N"),
+                    yOffset=alt.YOffset(
+                        "Measure:N", scale=alt.Scale(paddingInner=0.08)
+                    ),
                     x=alt.X("Share:Q", title="Share", axis=alt.Axis(format="%")),
                     color=alt.Color(
                         "Measure:N",
@@ -651,8 +668,8 @@ with tab_fair:
                         scale=alt.Scale(range=[ui.ACCENT, ui.ACCENT_SOFT]),
                     ),
                     tooltip=["Group", "Measure", alt.Tooltip("Share:Q", format=".1%")],
-                ),
-                height=max(180, 54 * len(group_order)),
+                )
+                .properties(height={"step": 22}),
             ),
             width="stretch",
             theme=None,
@@ -660,19 +677,15 @@ with tab_fair:
         st.markdown(
             ui.takeaway(
                 f"Most under-served: {worst} is {cap_df.loc[worst, 'share_of_no_shows']:.0%} "
-                f"of no-shows and {cap_df.loc[worst, 'share_of_list']:.0%} of the "
+                f"of no-shows and {cap_df.loc[worst, 'share_of_list']:.1%} of the "
                 f"call list (top {capacity['k']} per day, {capacity['n_days']} days)."
             ),
             unsafe_allow_html=True,
         )
     st.markdown(
         ui.note(
-            "Known limitation (ADR-013):",
-            f"patients 55+ are {age55['share_of_no_shows']:.0%} of no-shows but only "
-            f"{age55['share_of_list']:.1%} of the call list. Their risk scores are "
-            "honest (well calibrated), but their no-show rate is lower, so ranking by "
-            "raw risk pushes them off a short list. Before real use: review "
-            "per-group capacity or thresholds with clinical and equity input.",
+            "Known limitation:",
+            "documented in ADR-013, with the review needed before real use.",
         ),
         unsafe_allow_html=True,
     )
@@ -684,7 +697,7 @@ with tab_fair:
             f"({capacity['n_days']} days, {capacity['n_selected']} calls).\n"
             "- **Calibration:** risk scores are well calibrated in every group, so "
             "the gap comes from ranking, not from biased scores.\n"
-            "- **Caveats:** six days is a short window, so exact percentages are "
+            f"- **Caveats:** {capacity['n_days']} days is a short window, so exact percentages are "
             "noisy; the direction holds under every tie order.\n"
             "- **Decision records:** ADR-009 (fairness approach), ADR-013 (known "
             "limitation)."
@@ -805,8 +818,10 @@ with tab_impact:
                         f"${slots_month * cost:,.0f}",
                         "Monthly value at that rate",
                         "caution",
+                        bare=True,
                     )
-                ]
+                ],
+                columns=1,
             ),
             unsafe_allow_html=True,
         )
@@ -844,7 +859,9 @@ with tab_how:
             ],
             act="Read the limits on each tab before relying on any single figure.",
             confidence="Moderate",
-            confidence_why="Public data from one city and a six-day test window.",
+            confidence_why="Public data from one city and a "
+            f"{capacity['n_days']}-day test window.",
+            would_change="Real call outcomes, or a test on another clinic's data.",
         ),
         unsafe_allow_html=True,
     )

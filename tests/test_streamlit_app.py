@@ -44,3 +44,12 @@ def test_impact_value_input_edit() -> None:
     assert not at.exception
     at.number_input[0].set_value(500.0).run()
     assert not at.exception
+
+
+def test_fairness_share_of_list_matches_in_bottom_line_and_takeaway() -> None:
+    at = _run()
+    pages = [m.value for m in at.markdown]
+    bottom = [v for v in pages if "Does the list treat age groups fairly?" in v]
+    takeaway = [v for v in pages if "Most under-served" in v]
+    assert bottom and "0.8%" in bottom[0]
+    assert takeaway and "0.8%" in takeaway[0]

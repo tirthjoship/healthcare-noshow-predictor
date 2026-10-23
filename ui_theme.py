@@ -89,7 +89,7 @@ h3 {{ font-size: 1.15rem !important; }}
 
 /* header */
 .nb-head {{ margin: 0 0 18px; }}
-.nb-eyebrow {{ font: 600 11.5px var(--mono); letter-spacing: .16em; color: var(--accent); text-transform: uppercase; }}
+.nb-eyebrow {{ white-space: nowrap; font: 600 11.5px var(--mono); letter-spacing: .16em; color: var(--accent); text-transform: uppercase; }}
 .nb-q {{ font: 700 38px/1.1 var(--head); letter-spacing: -0.025em; margin: 8px 0 8px; color: var(--ink); }}
 .nb-sum {{ font-size: 15px; color: var(--slate); max-width: 780px; margin: 0 0 12px; line-height: 1.5; }}
 .nb-chips {{ display: flex; flex-wrap: wrap; gap: 8px; }}
@@ -125,7 +125,7 @@ h3 {{ font-size: 1.15rem !important; }}
 .bl .meta .v {{ font-size: 13.5px; color: var(--ink); margin-top: 2px; line-height: 1.45; }}
 
 /* number tiles */
-.tiles {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 14px; margin: 4px 0 16px; }}
+.tiles {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 14px; margin: 4px 0 16px; }}
 .tile {{ border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px 12px; background: #fff; }}
 .tile .num {{ font: 700 34px/1.05 var(--head); letter-spacing: -0.02em; }}
 .tile .lab {{ font-size: 13px; color: var(--slate); margin-top: 6px; line-height: 1.35; }}
@@ -141,10 +141,13 @@ h3 {{ font-size: 1.15rem !important; }}
   margin: 22px 0 8px; }}
 .note {{ border: 1px solid #EBD6A4; background: #FCF7EA; border-radius: 10px; padding: 12px 16px;
   font-size: 13.5px; line-height: 1.55; color: #3A3320; margin: 10px 0; }}
+.note.accent {{ border-color: #BCD8E3; background: #EEF6F9; color: #1B3A47; }}
+.tile.bare {{ border: none; padding: 4px 0 0; }}
 .note b {{ color: var(--ink); }}
 [data-testid="stExpander"] {{ border: 1px solid var(--line); border-radius: 12px; }}
 [data-testid="stExpander"] summary p {{ font-family: var(--mono); font-size: 12.5px; letter-spacing: .04em; }}
-@media (max-width: 720px) {{ .nb-q {{ font-size: 28px; }} }}
+@media (max-width: 720px) {{ .nb-q {{ font-size: 28px; }} .nb-eyebrow {{ font-size: 10.5px; letter-spacing: .1em; }} }}
+[data-testid="stMarkdownContainer"] ol, [data-testid="stMarkdownContainer"] ol li {{ font-size: 13.5px; line-height: 1.55; }}
 </style>
 """
 
@@ -236,20 +239,26 @@ def tile(
     tone: str = "neutral",
     tooltip: str | None = None,
     sub: str | None = None,
+    bare: bool = False,
 ) -> str:
     """One big colored number with a label, optional tooltip and sub line."""
     tip = info(tooltip) if tooltip else ""
     sub_html = f'<div class="sub">{esc(sub)}</div>' if sub else ""
     return (
-        '<div class="tile">'
+        f'<div class="tile{" bare" if bare else ""}">'
         f'<div class="num" style="color:{tone_color(tone)}">{esc(value)}</div>'
         f'<div class="lab">{esc(label)}{tip}</div>{sub_html}</div>'
     )
 
 
-def tiles(items: Sequence[str]) -> str:
-    """Lay out already-built tiles in a responsive grid."""
-    return f'<div class="tiles">{"".join(items)}</div>'
+def tiles(items: Sequence[str], columns: int | None = None) -> str:
+    """Lay out already-built tiles in a responsive grid (or a fixed column count)."""
+    style = (
+        f' style="grid-template-columns:repeat({int(columns)},minmax(0,1fr))"'
+        if columns
+        else ""
+    )
+    return f'<div class="tiles"{style}>{"".join(items)}</div>'
 
 
 def takeaway(text: str) -> str:
@@ -266,9 +275,10 @@ def layer_label(text: str) -> str:
     return f'<div class="layer">{esc(text)}</div>'
 
 
-def note(title: str, body: str) -> str:
-    """Amber callout for a known limitation."""
-    return f'<div class="note"><b>{esc(title)}</b> {esc(body)}</div>'
+def note(title: str, body: str, tone: str = "caution") -> str:
+    """Callout box: amber for a known limitation, teal-tinted for a hint."""
+    cls = "note accent" if tone == "accent" else "note"
+    return f'<div class="{cls}"><b>{esc(title)}</b> {esc(body)}</div>'
 
 
 @contextmanager
