@@ -126,7 +126,7 @@ missing = [
     p
     for p in (
         DEMO_CSV,
-        ROOT / "demo" / "june_scores.csv",
+        ROOT / "demo" / "june_scores.csv.gz",
         ROOT / "demo" / "weekday_lead_rates.csv",
         REPORTS / "model_metrics.json",
         REPORTS / "fairness.json",

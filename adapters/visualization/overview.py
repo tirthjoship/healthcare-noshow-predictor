@@ -1,6 +1,6 @@
 """Overview dashboard helpers: pure pandas aggregation, no Streamlit (ADR-010).
 
-The Overview tab reads two exported files (``demo/june_scores.csv`` and
+The Overview tab reads two exported files (``demo/june_scores.csv.gz`` and
 ``demo/weekday_lead_rates.csv``). Everything it shows is computed here, so the
 numbers, bucketing and shares can be unit tested without a browser.
 """
@@ -56,6 +56,22 @@ def lead_bucket(days: int) -> str:
     return LEAD_BUCKETS[5]
 
 
+def enrich(df: pd.DataFrame) -> pd.DataFrame:
+    """Add the age band derived from ``age`` (kept out of the exported file)."""
+    out = df.copy()
+    bands = pd.cut(out["age"], [-1, 17, 34, 54, 10_000], labels=list(AGE_BANDS))
+    out["age_band"] = bands.astype(str)
+    return out
+
+
+def calibration_gap_pct(df: pd.DataFrame) -> float:
+    """How far the summed risk runs above (positive) the actual no-show count, in %."""
+    actual = float(df["actual_no_show"].sum())
+    if actual == 0:
+        return 0.0
+    return 100.0 * (float(df["risk_score"].sum()) / actual - 1.0)
+
+
 def top_neighbourhoods(df: pd.DataFrame, n: int = TOP_NEIGHBOURHOODS) -> list[str]:
     """The ``n`` neighbourhoods with the most appointments (ties by name)."""
     counts = df["neighbourhood"].value_counts()
@@ -86,8 +102,13 @@ def apply_filters(
 
 
 def top_n(df: pd.DataFrame, n: int) -> pd.DataFrame:
-    """The ``n`` highest-risk rows, highest first (stable for tied scores)."""
-    ranked = df.sort_values("risk_score", ascending=False, kind="stable")
+    """The ``n`` highest-risk rows, highest first (``day_rank`` breaks ties)."""
+    if "day_rank" in df.columns:
+        # Rank from the unrounded score, exported per day; order is preserved
+        # inside any filtered subset of a day.
+        ranked = df.sort_values("day_rank", kind="stable")
+    else:
+        ranked = df.sort_values("risk_score", ascending=False, kind="stable")
     return ranked.head(max(0, int(n)))
 
 
@@ -99,6 +120,7 @@ class Kpis:
     likely_reached: int
     likely_total: float
     reached_total: float
+    random_reached: float
 
 
 def compute_kpis(df: pd.DataFrame, n: int) -> Kpis:
@@ -113,6 +135,7 @@ def compute_kpis(df: pd.DataFrame, n: int) -> Kpis:
         likely_reached=round(reached),
         likely_total=likely,
         reached_total=reached,
+        random_reached=len(called) * likely / len(df) if len(df) else 0.0,
     )
 
 
@@ -139,17 +162,24 @@ def band_shares(df: pd.DataFrame, n: int) -> pd.DataFrame:
     )
 
 
-def band_headline(shares: pd.DataFrame) -> str:
-    """Action title for the age-band chart, from the largest under-served band."""
+def band_headline(shares: pd.DataFrame, calls: int = 0) -> str:
+    """Action title for the age-band chart, from the band with the biggest gap."""
     if float(shares["call_share"].sum()) == 0.0:
         return "No calls planned for these filters"
     gap = shares["call_share"] - shares["likely_share"]
-    worst = shares.iloc[int(gap.to_numpy().argmin())]
     if float(gap.min()) > -MIN_GAP_POINTS:
         return "Calls track likely no-shows across age bands"
+    worst = shares.iloc[int(gap.to_numpy().argmin())]
+    likely = f"{worst['likely_share']:.0f}% of likely no-shows"
+    if float(worst["call_share"]) == 0.0:
+        label = f"top {calls}" if calls else "call list"
+        return (
+            f"No {worst['age_band']} patients make the {label}, "
+            f"though they account for {likely}"
+        )
     return (
         f"{worst['age_band']} patients get {worst['call_share']:.0f}% of calls "
-        f"for {worst['likely_share']:.0f}% of likely no-shows"
+        f"but account for {likely}"
     )
 
 
@@ -161,30 +191,53 @@ def bucket_rates(rates: pd.DataFrame) -> pd.DataFrame:
     return grouped
 
 
+def visible_weekdays(rates: pd.DataFrame) -> list[str]:
+    """Weekdays (Mon first) with at least one cell of ``MIN_CELL`` appointments."""
+    big = rates[rates["appointments"] >= MIN_CELL]["weekday"]
+    return [d for d in WEEKDAYS if d in set(big)]
+
+
+def heatmap_data(rates: pd.DataFrame) -> pd.DataFrame:
+    """Heatmap rows without the weekdays that have no usable cell."""
+    return rates[rates["weekday"].isin(visible_weekdays(rates))].copy()
+
+
 def wait_supports_trend(rates: pd.DataFrame) -> bool:
-    """True when the pooled rate rises from same-day to the longest wait bucket."""
+    """True when every wait bucket misses more often than same-day bookings."""
     pooled = bucket_rates(rates)["no_show_rate"]
-    if len(pooled) < 2:
+    if len(pooled) < 2 or pooled.index[0] != LEAD_BUCKETS[0]:
         return False
-    return bool(pooled.iloc[-1] > pooled.iloc[0] and pooled.idxmax() != pooled.index[0])
+    return bool((pooled.iloc[1:] > pooled.iloc[0]).all())
 
 
 def heatmap_headline(rates: pd.DataFrame) -> str:
     """Action title for the heatmap; only claims a trend the data shows."""
-    if wait_supports_trend(rates):
-        return "The longer the wait, the more patients miss"
-    return "No-show rate by weekday and wait"
+    if not wait_supports_trend(rates):
+        return "No-show rate by weekday and wait"
+    pooled = bucket_rates(rates)["no_show_rate"] * 100
+    return (
+        f"Same-day bookings rarely miss ({pooled.iloc[0]:.0f}%); any wait raises "
+        f"misses to {pooled.iloc[1:].min():.0f} to {pooled.iloc[1:].max():.0f}%"
+    )
 
 
 def heatmap_caption(rates: pd.DataFrame) -> str:
-    """Short caption quoting the shortest and longest wait rates."""
-    pooled = bucket_rates(rates)["no_show_rate"]
-    if pooled.empty:
-        return ""
+    """Caption saying what population the heatmap covers."""
+    total = int(rates["appointments"].sum())
     return (
-        f"{pooled.index[0]}: {100 * pooled.iloc[0]:.1f}% miss. "
-        f"{pooled.index[-1]}: {100 * pooled.iloc[-1]:.1f}% miss."
+        f"All {total // 1000}K appointments, Apr to Jun 2016, not the "
+        f"selected day. Grey: under {MIN_CELL} appointments."
     )
+
+
+def bullet_headline(k: Kpis) -> str:
+    """Action title for the coverage chart."""
+    if k.calls_planned == 0:
+        return "No calls planned for these filters"
+    text = f"{k.reached_total:.0f} of {k.calls_planned} calls reach a likely no-show"
+    if k.random_reached > 0:
+        text += f", about {k.reached_total / k.random_reached:.1f}x random"
+    return text
 
 
 def display_hood(name: str) -> str:

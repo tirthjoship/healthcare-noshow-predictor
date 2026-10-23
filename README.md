@@ -335,7 +335,7 @@ make check
 python scripts/run_training.py
 python scripts/run_phase2.py
 python scripts/export_demo.py
-python scripts/export_dashboard.py   # demo/june_scores.csv + weekday_lead_rates.csv (Overview tab)
+python scripts/export_dashboard.py   # demo/june_scores.csv.gz + weekday_lead_rates.csv (Overview tab)
 
 # Launch the interactive demo
 streamlit run streamlit_app.py

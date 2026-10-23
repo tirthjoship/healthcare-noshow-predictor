@@ -14,15 +14,17 @@ import ui_theme as ui
 from adapters.visualization import overview as ov
 
 ROOT = Path(__file__).resolve().parent
-SCORES_CSV = ROOT / "demo" / "june_scores.csv"
+SCORES_CSV = ROOT / "demo" / "june_scores.csv.gz"
 RATES_CSV = ROOT / "demo" / "weekday_lead_rates.csv"
-CHART_H = 178
+HEAT_H = 330
+BAND_H = 150
+LIST_H = 412
 SERIES = ["Likely no-shows", "Call list"]
 
 
 @st.cache_data  # type: ignore[untyped-decorator]
 def load_scores() -> pd.DataFrame:
-    return pd.read_csv(SCORES_CSV)
+    return ov.enrich(pd.read_csv(SCORES_CSV))
 
 
 @st.cache_data  # type: ignore[untyped-decorator]
@@ -59,11 +61,11 @@ def _fit(chart: Any, height: int) -> Any:
 
 
 def _heatmap(rates: pd.DataFrame) -> Any:
-    data = rates.copy()
+    data = ov.heatmap_data(rates)
     data["rate_pct"] = data["no_show_rate"] * 100
     data["rate_label"] = data["rate_pct"].map(lambda v: f"{v:.0f}%")
     data["enough"] = data["appointments"] >= ov.MIN_CELL
-    days = [d for d in ov.WEEKDAYS if d in set(data["weekday"])]
+    days = ov.visible_weekdays(rates)
     x = alt.X(
         "lead_bucket:N",
         sort=list(ov.LEAD_BUCKETS),
@@ -78,23 +80,34 @@ def _heatmap(rates: pd.DataFrame) -> Any:
     tip = [
         alt.Tooltip("weekday:N", title="Weekday"),
         alt.Tooltip("lead_bucket:N", title="Wait"),
-        alt.Tooltip("rate_pct:Q", title="No-show rate", format=".1f"),
+        alt.Tooltip("rate_pct:Q", title="No-show rate (%)", format=".1f"),
         alt.Tooltip("appointments:Q", title="Appointments", format=","),
     ]
     good = data[data["enough"]]
     sparse = data[~data["enough"]]
     scale = alt.Scale(
-        domain=[float(good["rate_pct"].min()), float(good["rate_pct"].max())],
-        range=["#E4F0F5", ui.ACCENT, "#0F3F52"],
+        domain=[0, 15, 28, 40],
+        range=["#EEF5F8", ui.ACCENT_SOFT, ui.ACCENT, "#0F3F52"],
+        clamp=True,
+    )
+    legend = alt.Legend(
+        title="No-show rate (%)",
+        orient="top",
+        direction="horizontal",
+        gradientLength=140,
+        gradientThickness=8,
+        titleFontSize=10,
+        labelFontSize=10,
+        values=[0, 10, 20, 30, 40],
     )
     base_good = alt.Chart(good).encode(x=x, y=y, tooltip=tip)
     cells = base_good.mark_rect(stroke="#fff", strokeWidth=2).encode(
-        color=alt.Color("rate_pct:Q", scale=scale, legend=None)
+        color=alt.Color("rate_pct:Q", scale=scale, legend=legend)
     )
     labels = base_good.mark_text(fontSize=11, font="IBM Plex Mono").encode(
         text="rate_label:N",
         color=alt.condition(
-            alt.datum.rate_pct > 15, alt.value("#FFFFFF"), alt.value(ui.INK)
+            alt.datum.rate_pct > 24, alt.value("#FFFFFF"), alt.value(ui.INK)
         ),
     )
     grey = (
@@ -102,7 +115,7 @@ def _heatmap(rates: pd.DataFrame) -> Any:
         .mark_rect(stroke="#fff", strokeWidth=2, color="#F2F4F6")
         .encode(x=x, y=y, tooltip=tip)
     )
-    return _fit(alt.layer(grey, cells, labels), CHART_H)
+    return _fit(alt.layer(grey, cells, labels), HEAT_H)
 
 
 def _butterfly(shares: pd.DataFrame, band: str) -> Any:
@@ -159,40 +172,41 @@ def _butterfly(shares: pd.DataFrame, band: str) -> Any:
         )
         .add_params(pick)
     )
-    return _fit(bars, CHART_H - 22)
+    return _fit(bars, BAND_H)
 
 
 def _bullet(k: ov.Kpis) -> Any:
-    top = max(k.likely_total, float(k.calls_planned), 1.0) * 1.08
-    scale = alt.Scale(domain=[0, top])
-    ax = alt.Axis(title="Patients", tickCount=5)
-    row = alt.Y("m:N", title=None, axis=None)
-
-    def frame(value: float, label: str) -> pd.DataFrame:
-        return pd.DataFrame({"m": ["Plan"], "value": [value], "label": [label]})
-
-    tip = [
-        alt.Tooltip("label:N", title="Measure"),
-        alt.Tooltip("value:Q", title="Patients", format=",.0f"),
-    ]
-
-    def layer(df: pd.DataFrame, mark: Any, color: str, size: int) -> Any:
-        return (
-            alt.Chart(df)
-            .encode(y=row, x=alt.X("value:Q", scale=scale, axis=ax), tooltip=tip)
-            .mark_bar(color=color, size=size)
-            if mark == "bar"
-            else alt.Chart(df)
-            .encode(y=row, x=alt.X("value:Q", scale=scale, axis=ax), tooltip=tip)
-            .mark_tick(color=color, thickness=3, size=size)
-        )
-
-    total = layer(frame(k.likely_total, "All likely no-shows"), "bar", "#DCE9EF", 46)
-    reached = layer(
-        frame(k.reached_total, "Likely misses reached"), "bar", ui.ACCENT, 18
+    """Three bars on one 0 to N calls scale: plan, reached, and random calling."""
+    data = pd.DataFrame(
+        {
+            "measure": [
+                "Calls planned",
+                "Misses reached",
+                "At random",
+            ],
+            "value": [float(k.calls_planned), k.reached_total, k.random_reached],
+            "color": ["#DCE9EF", ui.ACCENT, ui.ACCENT_SOFT],
+        }
     )
-    calls = layer(frame(float(k.calls_planned), "Calls planned"), "tick", ui.INK, 46)
-    return _fit(alt.layer(total, reached, calls), 140)
+    data["label"] = data["value"].map(lambda v: f"{v:.1f}")
+    order = list(data["measure"])
+    top = max(float(k.calls_planned), 1.0) * 1.12
+    base = alt.Chart(data).encode(
+        y=alt.Y("measure:N", sort=order, title=None, axis=alt.Axis(labelLimit=170)),
+        x=alt.X(
+            "value:Q",
+            scale=alt.Scale(domain=[0, top]),
+            title="Calls and expected no-shows",
+            axis=alt.Axis(tickMinStep=1, tickCount=5),
+        ),
+        tooltip=[
+            alt.Tooltip("measure:N", title="Measure"),
+            alt.Tooltip("value:Q", title="Patients", format=".1f"),
+        ],
+    )
+    bars = base.mark_bar(size=22).encode(color=alt.Color("color:N", scale=None))
+    text = base.mark_text(align="left", dx=5, fontSize=12).encode(text="label:N")
+    return _fit(alt.layer(bars, text), BAND_H)
 
 
 def render() -> None:
@@ -215,6 +229,7 @@ def render() -> None:
 
     board = ov.apply_filters(scores, day, band, hood, hoods)
     k = ov.compute_kpis(board, n)
+    gap = ov.calibration_gap_pct(scores)
     st.markdown(
         '<div class="ov-kpis">'
         + ui.tiles(
@@ -229,8 +244,9 @@ def render() -> None:
                     f"{k.likely_no_shows:,}",
                     "Likely no-shows",
                     "caution",
-                    "The sum of every patient's risk score, so the expected number "
-                    "of missed appointments.",
+                    "The model's expected count: the sum of every patient's risk "
+                    f"score. On June test days it ran about {gap:.0f}% above the "
+                    "actual number of no-shows.",
                 ),
                 ui.tile(
                     f"{k.calls_planned:,}",
@@ -260,8 +276,7 @@ def render() -> None:
             )
             st.altair_chart(_heatmap(rates), width="stretch", theme=None)
             st.markdown(
-                f'<div class="ov-cap">{ui.esc(ov.heatmap_caption(rates))} '
-                f"Grey: under {ov.MIN_CELL} appointments.</div>",
+                f'<div class="ov-cap">{ui.esc(ov.heatmap_caption(rates))}</div>',
                 unsafe_allow_html=True,
             )
     with right:
@@ -288,7 +303,7 @@ def render() -> None:
                 st.dataframe(
                     table,
                     hide_index=True,
-                    height=210,
+                    height=LIST_H,
                     width="stretch",
                     column_config={
                         "Rank": st.column_config.NumberColumn(width=44),
@@ -309,7 +324,10 @@ def render() -> None:
         with ui.card("ov_band"):
             base = ov.apply_filters(scores, day, ov.ALL, hood, hoods)
             shares = ov.band_shares(base, n)
-            st.markdown(ui.card_title(ov.band_headline(shares)), unsafe_allow_html=True)
+            st.markdown(
+                ui.card_title(ov.band_headline(shares, k.calls_planned)),
+                unsafe_allow_html=True,
+            )
             key = f"ov_band_chart_{band}"
             st.altair_chart(
                 _butterfly(shares, band),
@@ -319,29 +337,32 @@ def render() -> None:
                 on_select=partial(_on_pick, key),
                 selection_mode="band_pick",
             )
+            band_cap = (
+                "Still compares all age bands for the selected day. Click the "
+                "band again to clear the filter."
+                if band != ov.ALL
+                else "Click an age band to filter the board."
+            )
             st.markdown(
-                '<div class="ov-cap">Click an age band to filter the board.</div>',
+                f'<div class="ov-cap">{ui.esc(band_cap)}</div>',
                 unsafe_allow_html=True,
             )
     with right2:
         with ui.card("ov_bullet"):
             st.markdown(
-                ui.card_title(
-                    f"{k.calls_planned} calls reach about {k.likely_reached} "
-                    f"of {k.likely_no_shows} likely misses"
-                ),
+                ui.card_title(ov.bullet_headline(k)),
                 unsafe_allow_html=True,
             )
             st.altair_chart(_bullet(k), width="stretch", theme=None)
             st.markdown(
-                '<div class="ov-cap">Light bar: all likely no-shows. Teal bar: '
-                "reached by the calls. Tick: calls planned.</div>",
+                '<div class="ov-cap">Random calling is the same number of calls '
+                "at the average risk of the filtered patients.</div>",
                 unsafe_allow_html=True,
             )
 
     st.markdown(
         '<div class="ov-foot"><span>Public Kaggle data, June 2016 test days. '
         "Not connected to any health system.</span>"
-        '<span class="ov-link">Read the full brief in the Brief tab</span></div>',
+        "<span>Read the full brief in the Brief tab.</span></div>",
         unsafe_allow_html=True,
     )

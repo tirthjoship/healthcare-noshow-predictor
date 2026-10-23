@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import json
+from pathlib import Path
+
 import pandas as pd
 import pytest
 
@@ -127,7 +130,7 @@ def test_band_headline_gap() -> None:
     skew = even.assign(
         call_share=[40.0, 40.0, 19.0, 1.0], likely_share=[10.0, 30.0, 40.0, 20.0]
     )
-    assert ov.band_headline(skew).startswith("35-54 patients get 19% of calls")
+    assert ov.band_headline(skew, 20).startswith("35-54 patients get 19% of calls")
 
 
 def _rates(vals: list[float]) -> pd.DataFrame:
@@ -144,7 +147,105 @@ def _rates(vals: list[float]) -> pd.DataFrame:
 def test_heatmap_headline_only_when_supported() -> None:
     up = _rates([0.05, 0.2, 0.25, 0.3, 0.33, 0.34])
     down = _rates([0.4, 0.3, 0.25, 0.2, 0.15, 0.1])
-    assert ov.heatmap_headline(up) == "The longer the wait, the more patients miss"
+    assert ov.heatmap_headline(up) == (
+        "Same-day bookings rarely miss (5%); any wait raises misses to 20 to 34%"
+    )
     assert ov.heatmap_headline(down) == "No-show rate by weekday and wait"
-    assert "5.0% miss" in ov.heatmap_caption(up)
+    big = up.assign(appointments=20_000)
+    assert "All 120K appointments" in ov.heatmap_caption(big)
+    assert "not the selected day" in ov.heatmap_caption(up)
+
+
+def test_sparse_weekdays_dropped() -> None:
+    rates = pd.concat(
+        [
+            _rates([0.05, 0.2]),
+            pd.DataFrame(
+                {
+                    "weekday": ["Sat", "Sat"],
+                    "lead_bucket": ["Same day", "1 to 2 days"],
+                    "appointments": [8, 29],
+                    "no_shows": [0, 5],
+                }
+            ),
+        ]
+    )
+    assert ov.visible_weekdays(rates) == ["Mon"]
+    assert set(ov.heatmap_data(rates)["weekday"]) == {"Mon"}
+
+
+def test_enrich_age_band_matches_rule() -> None:
+    df = pd.DataFrame({"age": [0, 17, 18, 34, 35, 54, 55, 115]})
+    assert list(ov.enrich(df)["age_band"]) == [ov.age_band(a) for a in df["age"]]
+
+
+def test_calibration_gap_pct() -> None:
+    df = pd.DataFrame({"risk_score": [0.5, 0.5, 0.2], "actual_no_show": [1, 0, 0]})
+    assert ov.calibration_gap_pct(df) == pytest.approx(20.0)
+    assert ov.calibration_gap_pct(df.assign(actual_no_show=0)) == 0.0
+
+
+def test_top_n_uses_day_rank_for_ties() -> None:
+    df = pd.DataFrame(
+        {"risk_score": [0.4, 0.4, 0.4], "day_rank": [3, 1, 2], "age": [1, 2, 3]}
+    )
+    assert list(ov.top_n(df, 2)["age"]) == [2, 3]
+
+
+def test_random_baseline_and_bullet_headline() -> None:
+    k = ov.compute_kpis(ov.apply_filters(_df(), "d1"), 2)
+    assert k.random_reached == pytest.approx(2 * 1.5 / 5)
+    assert (
+        ov.bullet_headline(k)
+        == "1 of 2 calls reach a likely no-show, about 1.5x random"
+    )
+    empty = ov.compute_kpis(_df().iloc[0:0], 5)
+    assert empty.random_reached == 0.0
+    assert ov.bullet_headline(empty) == "No calls planned for these filters"
+
+
+def test_band_headline_zero_calls_band() -> None:
+    shares = pd.DataFrame(
+        {
+            "age_band": list(ov.AGE_BANDS),
+            "likely_share": [10.0, 30.0, 37.0, 23.0],
+            "call_share": [20.0, 40.0, 40.0, 0.0],
+        }
+    )
+    assert ov.band_headline(shares, 20) == (
+        "No 55+ patients make the top 20, though they account for 23% of "
+        "likely no-shows"
+    )
     assert ov.display_hood("JARDIM CAMBURI") == "Jardim Camburi"
+
+
+def test_exported_top20_precision_matches_business_impact() -> None:
+    """Ranking from the committed export reproduces the reported precision@20."""
+    root = Path(__file__).resolve().parent.parent
+    scores = pd.read_csv(root / "demo" / "june_scores.csv.gz")
+    assert len(scores) > 26_000
+    called = scores[scores["day_rank"] <= 20]
+    assert (called.groupby("appointment_day").size() == 20).all()
+    precision = float(called["actual_no_show"].mean())
+    reported = json.loads((root / "reports" / "business_impact.json").read_text())
+    assert round(precision, 4) == round(float(reported["precision_at_k"]), 4)
+
+
+def test_on_pick_toggles_band(monkeypatch: pytest.MonkeyPatch) -> None:
+    streamlit = pytest.importorskip("streamlit")
+    import overview_tab
+
+    def pick(band: str | None) -> dict[str, object]:
+        chosen = [] if band is None else [{"age_band": band}]
+        return {"selection": {"band_pick": chosen}}
+
+    state: dict[str, object] = {"ov_band": ov.ALL, "k": pick("55+")}
+    monkeypatch.setattr(streamlit, "session_state", state)
+    overview_tab._on_pick("k")
+    assert state["ov_band"] == "55+"
+    overview_tab._on_pick("k")  # same band again clears the filter
+    assert state["ov_band"] == ov.ALL
+    state["k"] = pick(None)
+    state["ov_band"] = "18-34"
+    overview_tab._on_pick("k")  # nothing picked: unchanged
+    assert state["ov_band"] == "18-34"

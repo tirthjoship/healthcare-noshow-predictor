@@ -1,7 +1,7 @@
 """Export the small files behind the Overview tab of the Streamlit app.
 
 Writes two committed files from the (gitignored) raw Kaggle CSV:
-    demo/june_scores.csv         one row per June 2016 holdout appointment, scored
+    demo/june_scores.csv.gz      one row per June 2016 holdout appointment, scored
                                  by the calibrated model trained on April to May
     demo/weekday_lead_rates.csv  no-show rate and count by weekday x lead bucket,
                                  all 110K appointments
@@ -23,7 +23,7 @@ import pandas as pd
 
 from adapters.data.csv_repository import KaggleAppointmentCSVRepository
 from adapters.ml.calibrated_predictor import CalibratedPredictor
-from adapters.visualization.overview import LEAD_BUCKETS, age_band, lead_bucket
+from adapters.visualization.overview import LEAD_BUCKETS, lead_bucket
 
 ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_CSV = ROOT / "data" / "raw" / "KaggleV2-May-2016.csv"
@@ -46,21 +46,28 @@ def june_scores(repo: KaggleAppointmentCSVRepository) -> pd.DataFrame:
     predictor.train(train_appts, train_labels)
     risk = np.array([predictor.predict_no_show(a).risk_score for a in test_appts])
 
-    return pd.DataFrame(
+    frame = pd.DataFrame(
         {
             "appointment_day": [
                 a.appointment_day.date().isoformat() for a in test_appts
             ],
-            "weekday": [_weekday(a.appointment_day) for a in test_appts],
             "age": [a.patient.age for a in test_appts],
-            "age_band": [age_band(a.patient.age) for a in test_appts],
             "neighbourhood": [a.neighbourhood for a in test_appts],
             "lead_time_days": [a.lead_time_days for a in test_appts],
-            "lead_bucket": [lead_bucket(a.lead_time_days) for a in test_appts],
             "risk_score": np.round(risk, 4),
             "actual_no_show": [int(lb) for lb in test_labels],
         }
     )
+    # Rank within each day from the UNROUNDED score: rounding to 4 dp creates ties
+    # that would change the top-K. Ties keep the original (repository) order.
+    frame["day_rank"] = (
+        pd.Series(risk)
+        .groupby(frame["appointment_day"])
+        .rank(method="first", ascending=False)
+        .astype(int)
+    )
+    # Weekday, age band and lead bucket are derived at load time (overview.enrich).
+    return frame.sort_values(["appointment_day", "day_rank"]).reset_index(drop=True)
 
 
 def weekday_lead_rates(repo: KaggleAppointmentCSVRepository) -> pd.DataFrame:
@@ -95,7 +102,11 @@ def main() -> None:
     scores = june_scores(repo)
     rates = weekday_lead_rates(repo)
     DEMO_DIR.mkdir(exist_ok=True)
-    scores.to_csv(DEMO_DIR / "june_scores.csv", index=False)
+    scores.to_csv(
+        DEMO_DIR / "june_scores.csv.gz",
+        index=False,
+        compression={"method": "gzip", "mtime": 0},
+    )
     rates.to_csv(DEMO_DIR / "weekday_lead_rates.csv", index=False)
 
     total = int(rates["appointments"].sum())

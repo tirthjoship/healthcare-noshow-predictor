@@ -151,12 +151,12 @@ h3 {{ font-size: 1.15rem !important; }}
 .ov-kpis .tile {{ padding: 9px 14px 8px; }}
 .ov-kpis .tile .num {{ font-size: 28px; }}
 .ov-kpis .tile .lab {{ margin-top: 3px; font-size: 12.5px; }}
-[class*="st-key-card_ov_"] {{ height: 250px !important; flex: 0 0 auto !important; overflow: hidden; }}
+[class*="st-key-card_ov_"] {{ height: 262px !important; flex: 0 0 auto !important; overflow: hidden; }}
 [class*="st-key-card_ov_"] [data-testid="stElementToolbar"] {{ display: none; }}
+[class*="st-key-card_ov_heat"], [class*="st-key-card_ov_list"] {{ height: 470px !important; }}
 .ov-cap {{ font-size: 12px; color: var(--slate); margin: 0 2px 2px; line-height: 1.35; }}
 .ov-foot {{ display: flex; justify-content: space-between; flex-wrap: wrap; gap: 6px 16px;
   font-size: 11.5px; color: var(--slate); margin-top: 8px; }}
-.ov-link {{ color: var(--accent); font-weight: 600; font-family: var(--mono); }}
 [class*="st-key-ov_rail"] label p {{ font-size: 12px; color: var(--slate); }}
 @media (max-width: 720px) {{
   .ov-kpis .tiles {{ grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }}
