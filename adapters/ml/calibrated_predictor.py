@@ -1,4 +1,4 @@
-"""CalibratedPredictor — XGBoost with isotonic calibration (project identity, ADR-008).
+"""CalibratedPredictor: XGBoost with isotonic calibration (project identity, ADR-008).
 
 Wraps XGBClassifier in CalibratedClassifierCV(method="isotonic") to produce
 well-calibrated probabilities. Calibrated probabilities are critical for the

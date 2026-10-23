@@ -17,7 +17,7 @@ Three-stage progression:
 
 ## Consequences
 
-- Calibration is this project's identity — undersold in most portfolios
+- Calibration is the project's focus: probabilities must be trustworthy for a ranked list
 - Daily call list ranking depends on probability quality, not just discrimination
 - Moderate AUC (0.66) makes calibration especially important
 - Report: AUC, F1, Brier score, calibration curve for each model

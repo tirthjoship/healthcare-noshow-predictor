@@ -46,25 +46,53 @@ class TestCSVRepositoryLoading:
         repo = KaggleAppointmentCSVRepository(sample_csv)
         appointments = repo.get_appointments()
         # Row 2: ScheduledDay=2016-04-30T10:00, AppointmentDay=2016-05-05T00:00
-        # Timedelta = 4 days 14 hours → .days truncates to 4
+        # Calendar-date difference = 5 days (ADR-014). Subtracting raw timestamps
+        # gives 4 days 14 hours and truncates to 4, which understated every lead time.
         appt = appointments[1]
-        assert appt.lead_time_days == 4
+        assert appt.lead_time_days == 5
 
-    def test_clips_negative_lead_time(self, sample_csv, tmp_path):
-        # Row 1: AppointmentDay == ScheduledDay (same day, could be negative after
-        # stripping time). Let's create a specific row with appointment before scheduled.
-        csv_file = tmp_path / "negative_lead.csv"
-        csv_file.write_text(
+    def _write_rows(self, tmp_path, rows):
+        csv_file = tmp_path / "lead_rows.csv"
+        header = (
             "PatientId,AppointmentID,Gender,ScheduledDay,AppointmentDay,Age,"
             "Neighbourhood,Scholarship,Hipertension,Diabetes,Alcoholism,Handcap,"
             "SMS_received,No-show\n"
-            "5.0,2001,M,2016-05-10T10:00:00Z,2016-05-08T00:00:00Z,30,"
-            "CENTRO,0,0,0,0,0,0,No\n",
-            encoding="utf-8",
+        )
+        csv_file.write_text(header + "".join(rows), encoding="utf-8")
+        return csv_file
+
+    def test_same_day_and_next_day_are_distinct(self, tmp_path):
+        # Regression (ADR-014): AppointmentDay is always midnight, so a same-day
+        # booking used to compute as -1 (clipped to 0) and a next-day booking as 0.
+        # The two groups (4.6% vs 21.4% no-show) collapsed into one value.
+        csv_file = self._write_rows(
+            tmp_path,
+            [
+                "5.0,2001,M,2016-05-10T10:00:00Z,2016-05-10T00:00:00Z,30,"
+                "CENTRO,0,0,0,0,0,0,No\n",
+                "6.0,2002,F,2016-05-09T15:30:00Z,2016-05-10T00:00:00Z,40,"
+                "CENTRO,0,0,0,0,0,0,No\n",
+            ],
+        )
+        appointments = KaggleAppointmentCSVRepository(csv_file).get_appointments()
+        assert [a.lead_time_days for a in appointments] == [0, 1]
+
+    def test_drops_appointment_before_scheduling(self, tmp_path):
+        # Appointment date earlier than the booking date is impossible (5 rows in
+        # the Kaggle data). Drop instead of clipping, so they don't pose as same-day.
+        csv_file = self._write_rows(
+            tmp_path,
+            [
+                "5.0,2001,M,2016-05-10T10:00:00Z,2016-05-08T00:00:00Z,30,"
+                "CENTRO,0,0,0,0,0,0,No\n",
+                "6.0,2002,F,2016-05-09T15:30:00Z,2016-05-10T00:00:00Z,40,"
+                "CENTRO,0,0,0,0,0,0,No\n",
+            ],
         )
         repo = KaggleAppointmentCSVRepository(csv_file)
         appointments = repo.get_appointments()
-        assert appointments[0].lead_time_days == 0
+        assert [a.appointment_id for a in appointments] == ["2002"]
+        assert len(repo.get_labels()) == 1
 
 
 class TestCSVRepositoryLabels:

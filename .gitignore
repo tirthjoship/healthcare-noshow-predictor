@@ -48,6 +48,7 @@ models/
 .ruff_cache/
 .pytest_cache/
 .hypothesis/
+.coverage
 
 # Conda
 environment.yml

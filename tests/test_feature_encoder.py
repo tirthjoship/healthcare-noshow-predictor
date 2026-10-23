@@ -1,4 +1,4 @@
-"""Tests for FeatureEncoder — target encoding, shape, and feature values."""
+"""Tests for FeatureEncoder: target encoding, shape, and feature values."""
 
 from datetime import datetime
 

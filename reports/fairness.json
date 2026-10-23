@@ -1,0 +1,326 @@
+{
+  "threshold": 0.22,
+  "n_total": 26451,
+  "overall": {
+    "n": 26451.0,
+    "base_rate": 0.1846,
+    "selection_rate": 0.4983,
+    "fpr": 0.4371,
+    "fnr": 0.2313,
+    "precision": 0.2847,
+    "ece": 0.0165
+  },
+  "slices": {
+    "gender": {
+      "F": {
+        "n": 17316.0,
+        "base_rate": 0.1828,
+        "selection_rate": 0.4991,
+        "fpr": 0.4384,
+        "fnr": 0.2297,
+        "precision": 0.2821,
+        "ece": 0.0187
+      },
+      "M": {
+        "n": 9135.0,
+        "base_rate": 0.188,
+        "selection_rate": 0.4968,
+        "fpr": 0.4345,
+        "fnr": 0.2341,
+        "precision": 0.2898,
+        "ece": 0.0127
+      }
+    },
+    "age_band": {
+      "0-17": {
+        "n": 6499.0,
+        "base_rate": 0.2011,
+        "selection_rate": 0.5702,
+        "fpr": 0.501,
+        "fnr": 0.1546,
+        "precision": 0.2982,
+        "ece": 0.0233
+      },
+      "18-34": {
+        "n": 5584.0,
+        "base_rate": 0.2233,
+        "selection_rate": 0.6415,
+        "fpr": 0.5573,
+        "fnr": 0.0658,
+        "precision": 0.3252,
+        "ece": 0.0157
+      },
+      "35-54": {
+        "n": 7216.0,
+        "base_rate": 0.1795,
+        "selection_rate": 0.5514,
+        "fpr": 0.4925,
+        "fnr": 0.1792,
+        "precision": 0.2672,
+        "ece": 0.0185
+      },
+      "55+": {
+        "n": 7152.0,
+        "base_rate": 0.1444,
+        "selection_rate": 0.2675,
+        "fpr": 0.244,
+        "fnr": 0.5934,
+        "precision": 0.2196,
+        "ece": 0.021
+      }
+    },
+    "sms_received": {
+      "no_sms": {
+        "n": 15081.0,
+        "base_rate": 0.1268,
+        "selection_rate": 0.2872,
+        "fpr": 0.2351,
+        "fnr": 0.3541,
+        "precision": 0.2852,
+        "ece": 0.013
+      },
+      "sms": {
+        "n": 11370.0,
+        "base_rate": 0.2612,
+        "selection_rate": 0.7783,
+        "fpr": 0.7537,
+        "fnr": 0.1522,
+        "precision": 0.2846,
+        "ece": 0.0215
+      }
+    },
+    "scholarship": {
+      "none": {
+        "n": 23890.0,
+        "base_rate": 0.1819,
+        "selection_rate": 0.4889,
+        "fpr": 0.4303,
+        "fnr": 0.2478,
+        "precision": 0.2799,
+        "ece": 0.0163
+      },
+      "scholarship": {
+        "n": 2561.0,
+        "base_rate": 0.2093,
+        "selection_rate": 0.5861,
+        "fpr": 0.5022,
+        "fnr": 0.097,
+        "precision": 0.3225,
+        "ece": 0.0193
+      }
+    },
+    "neighbourhood": {
+      "JARDIM CAMBURI": {
+        "n": 1893.0,
+        "base_rate": 0.169,
+        "selection_rate": 0.3624,
+        "fpr": 0.3204,
+        "fnr": 0.4313,
+        "precision": 0.2653,
+        "ece": 0.0139
+      },
+      "JARDIM DA PENHA": {
+        "n": 927.0,
+        "base_rate": 0.1543,
+        "selection_rate": 0.3592,
+        "fpr": 0.3278,
+        "fnr": 0.4685,
+        "precision": 0.2282,
+        "ece": 0.0355
+      },
+      "MARIA ORTIZ": {
+        "n": 1287.0,
+        "base_rate": 0.1764,
+        "selection_rate": 0.5167,
+        "fpr": 0.4623,
+        "fnr": 0.2291,
+        "precision": 0.2632,
+        "ece": 0.0349
+      },
+      "RESIST\u00caNCIA": {
+        "n": 1071.0,
+        "base_rate": 0.1783,
+        "selection_rate": 0.5023,
+        "fpr": 0.4341,
+        "fnr": 0.1832,
+        "precision": 0.29,
+        "ece": 0.0176
+      },
+      "SANTA MARTHA": {
+        "n": 836.0,
+        "base_rate": 0.1687,
+        "selection_rate": 0.4079,
+        "fpr": 0.3353,
+        "fnr": 0.234,
+        "precision": 0.3167,
+        "ece": 0.0049
+      },
+      "other": {
+        "n": 20437.0,
+        "base_rate": 0.1889,
+        "selection_rate": 0.5195,
+        "fpr": 0.4561,
+        "fnr": 0.2083,
+        "precision": 0.2878,
+        "ece": 0.0162
+      }
+    }
+  },
+  "disparities": {
+    "gender": {
+      "fpr_gap": 0.0039,
+      "fnr_gap": 0.0044
+    },
+    "age_band": {
+      "fpr_gap": 0.3133,
+      "fnr_gap": 0.5276
+    },
+    "sms_received": {
+      "fpr_gap": 0.5186,
+      "fnr_gap": 0.2019
+    },
+    "scholarship": {
+      "fpr_gap": 0.0719,
+      "fnr_gap": 0.1508
+    },
+    "neighbourhood": {
+      "fpr_gap": 0.1419,
+      "fnr_gap": 0.2853
+    }
+  },
+  "holdout_period": "2016-06",
+  "threshold_rule": "F1-optimal, tuned on the June holdout itself (scan 0.10-0.90): a screening view, slightly optimistic",
+  "capacity": {
+    "k": 20,
+    "n_days": 6,
+    "n_selected": 120,
+    "overall": {
+      "precision": 0.4333,
+      "no_shows_captured": 0.0107
+    },
+    "slices": {
+      "gender": {
+        "F": {
+          "n": 17316.0,
+          "no_shows_captured": 0.012,
+          "share_of_list": 0.5833,
+          "share_of_appointments": 0.6546,
+          "share_of_no_shows": 0.6483
+        },
+        "M": {
+          "n": 9135.0,
+          "no_shows_captured": 0.0082,
+          "share_of_list": 0.4167,
+          "share_of_appointments": 0.3454,
+          "share_of_no_shows": 0.3517
+        }
+      },
+      "age_band": {
+        "0-17": {
+          "n": 6499.0,
+          "no_shows_captured": 0.0115,
+          "share_of_list": 0.3667,
+          "share_of_appointments": 0.2457,
+          "share_of_no_shows": 0.2677
+        },
+        "18-34": {
+          "n": 5584.0,
+          "no_shows_captured": 0.0217,
+          "share_of_list": 0.4667,
+          "share_of_appointments": 0.2111,
+          "share_of_no_shows": 0.2554
+        },
+        "35-54": {
+          "n": 7216.0,
+          "no_shows_captured": 0.0077,
+          "share_of_list": 0.1583,
+          "share_of_appointments": 0.2728,
+          "share_of_no_shows": 0.2653
+        },
+        "55+": {
+          "n": 7152.0,
+          "no_shows_captured": 0.0,
+          "share_of_list": 0.0083,
+          "share_of_appointments": 0.2704,
+          "share_of_no_shows": 0.2116
+        }
+      },
+      "sms_received": {
+        "no_sms": {
+          "n": 15081.0,
+          "no_shows_captured": 0.0194,
+          "share_of_list": 0.75,
+          "share_of_appointments": 0.5701,
+          "share_of_no_shows": 0.3916
+        },
+        "sms": {
+          "n": 11370.0,
+          "no_shows_captured": 0.0051,
+          "share_of_list": 0.25,
+          "share_of_appointments": 0.4299,
+          "share_of_no_shows": 0.6084
+        }
+      },
+      "scholarship": {
+        "none": {
+          "n": 23890.0,
+          "no_shows_captured": 0.0062,
+          "share_of_list": 0.7,
+          "share_of_appointments": 0.9032,
+          "share_of_no_shows": 0.8902
+        },
+        "scholarship": {
+          "n": 2561.0,
+          "no_shows_captured": 0.0466,
+          "share_of_list": 0.3,
+          "share_of_appointments": 0.0968,
+          "share_of_no_shows": 0.1098
+        }
+      },
+      "neighbourhood": {
+        "JARDIM CAMBURI": {
+          "n": 1893.0,
+          "no_shows_captured": 0.0,
+          "share_of_list": 0.0167,
+          "share_of_appointments": 0.0716,
+          "share_of_no_shows": 0.0655
+        },
+        "JARDIM DA PENHA": {
+          "n": 927.0,
+          "no_shows_captured": 0.0,
+          "share_of_list": 0.0,
+          "share_of_appointments": 0.035,
+          "share_of_no_shows": 0.0293
+        },
+        "MARIA ORTIZ": {
+          "n": 1287.0,
+          "no_shows_captured": 0.0,
+          "share_of_list": 0.0417,
+          "share_of_appointments": 0.0487,
+          "share_of_no_shows": 0.0465
+        },
+        "RESIST\u00caNCIA": {
+          "n": 1071.0,
+          "no_shows_captured": 0.0209,
+          "share_of_list": 0.05,
+          "share_of_appointments": 0.0405,
+          "share_of_no_shows": 0.0391
+        },
+        "SANTA MARTHA": {
+          "n": 836.0,
+          "no_shows_captured": 0.0071,
+          "share_of_list": 0.0083,
+          "share_of_appointments": 0.0316,
+          "share_of_no_shows": 0.0289
+        },
+        "other": {
+          "n": 20437.0,
+          "no_shows_captured": 0.0122,
+          "share_of_list": 0.8833,
+          "share_of_appointments": 0.7726,
+          "share_of_no_shows": 0.7907
+        }
+      }
+    }
+  }
+}

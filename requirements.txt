@@ -1,0 +1,7 @@
+# Runtime dependencies for the Streamlit Community Cloud demo (streamlit_app.py).
+# The app only renders precomputed artifacts (demo/scored_appointments.csv +
+# reports/*.json + reports/shap/*.png), so it needs no ML libraries at runtime.
+# For the full training/analysis pipeline, install the package instead:
+#   pip install -e ".[dev,analysis,demo]"
+streamlit>=1.36
+pandas>=2.0
