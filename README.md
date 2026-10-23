@@ -6,6 +6,8 @@ Predict medical appointment no-shows at booking time so clinic outreach teams ca
 [![Tests](https://img.shields.io/badge/tests-passing-success)](./tests/)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
+**Live demo:** [noshow-call-list.streamlit.app](https://noshow-call-list.streamlit.app/) · **How every decision was made:** [docs/DECISION_TREE.md](docs/DECISION_TREE.md)
+
 > **Disclaimer:** This project uses the [Kaggle Medical Appointments](https://www.kaggle.com/datasets/joniarroba/noshowappointments) public benchmark dataset. It is not connected to any health system or employer data.
 
 ---
@@ -296,7 +298,7 @@ pip install -e ".[demo]"
 streamlit run streamlit_app.py
 ```
 
-*Live demo: deploying to Streamlit Community Cloud (URL to follow).* Regenerate the artifacts with `python scripts/run_training.py && python scripts/run_phase2.py && python scripts/export_demo.py`.
+**Live demo:** [noshow-call-list.streamlit.app](https://noshow-call-list.streamlit.app/) (the app may take a few seconds to wake up). Regenerate the artifacts with `python scripts/run_training.py && python scripts/run_phase2.py && python scripts/export_demo.py`.
 
 ---
 
@@ -348,7 +350,7 @@ streamlit run streamlit_app.py
 | 0.5 | Domain pivot: readmission to no-show | ✅ Complete |
 | 1 | Adapters + model training | ✅ Complete (3 models) |
 | 2 | SHAP, fairness, business impact | ✅ Complete |
-| 2.5 | Streamlit call-list demo | ✅ Built (Community Cloud deploy pending) |
+| 2.5 | Streamlit call-list demo | ✅ Live on Community Cloud |
 | 2.6 | Pre-ship audit: lead-time fix, fairness at operating point | ✅ Complete (ADR-013, ADR-014) |
 
 **95 tests** total (unit + property-based), mypy strict, 83% coverage (gate 75%).
