@@ -8,6 +8,10 @@ Predict medical appointment no-shows at booking time so clinic outreach teams ca
 
 **Live demo:** [noshow-call-list.streamlit.app](https://noshow-call-list.streamlit.app/) · **How every decision was made:** [docs/DECISION_TREE.md](docs/DECISION_TREE.md)
 
+[![Demo of the no-show call list app: choosing a day, the Overview dashboard, fairness and impact tabs](docs/media/noshow-call-list-demo-poster.png)](docs/media/noshow-call-list-demo.mp4)
+
+*20-second walkthrough of the live app. Click the image to play the video.*
+
 > **Disclaimer:** This project uses the [Kaggle Medical Appointments](https://www.kaggle.com/datasets/joniarroba/noshowappointments) public benchmark dataset. It is not connected to any health system or employer data.
 
 ---
