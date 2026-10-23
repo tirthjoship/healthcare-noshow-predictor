@@ -3,5 +3,5 @@
 # reports/*.json + reports/shap/*.png), so it needs no ML libraries at runtime.
 # For the full training/analysis pipeline, install the package instead:
 #   pip install -e ".[dev,analysis,demo]"
-streamlit>=1.36
+streamlit>=1.46
 pandas>=2.0

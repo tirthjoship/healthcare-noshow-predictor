@@ -54,6 +54,23 @@ SLICE_LABELS = {
 }
 
 
+GROUP_LABELS = {
+    "F": "Female",
+    "M": "Male",
+    "no_sms": "No SMS",
+    "sms": "SMS sent",
+    "none": "Not enrolled",
+    "scholarship": "Enrolled",
+    "other": "All other",
+}
+
+
+def group_label(key: object) -> str:
+    """Plain label for a slice group key; neighbourhood names are title-cased."""
+    text = str(key)
+    return GROUP_LABELS.get(text, text.title() if text.isupper() else text)
+
+
 @st.cache_data
 def load_scored() -> pd.DataFrame:
     return pd.read_csv(DEMO_CSV)
@@ -191,8 +208,8 @@ with tab_calls:
             min_value=1,
             max_value=int(min(50, len(day_df))),
             value=int(min(10, len(day_df))),
-            help="Slots per day means how many reminder calls the team can make. "
-            "The list shows that many patients, highest risk first.",
+            help="How many reminder calls the team can make today. The list shows "
+            "that many patients, highest risk first.",
         )
         ranked = rank_call_list(day_df.to_dict("records"), k)
         hits = sum(bool(r["actual_no_show"]) for r in ranked)
@@ -205,7 +222,7 @@ with tab_calls:
         st.metric(
             "Hit rate vs calling at random",
             f"{precision_at_capacity(ranked):.0%}",
-            delta=f"{precision_at_capacity(ranked) - base_rate:+.0%} vs random",
+            delta=f"{(precision_at_capacity(ranked) - base_rate) * 100:+.0f} pts vs random",
             help="Hit rate is the share of called patients who really missed. "
             "Random calling would reach the day's overall no-show rate.",
         )
@@ -274,10 +291,15 @@ with tab_why:
         )
         st.altair_chart(
             alt.Chart(shap_df)
-            .mark_bar()
+            .mark_bar(color="#1f6f8b")
             .encode(
                 x=alt.X("Average influence:Q", title="Average influence on risk"),
-                y=alt.Y("Factor:N", sort="-x", title=None),
+                y=alt.Y(
+                    "Factor:N",
+                    sort="-x",
+                    title=None,
+                    axis=alt.Axis(labelLimit=300),
+                ),
                 tooltip=["Factor", alt.Tooltip("Average influence:Q", format=".3f")],
             ),
             width="stretch",
@@ -320,12 +342,25 @@ with tab_why:
         f"**Risk {row['risk_score']:.2f}.** Biggest push **up**: *{top_up}*. "
         f"Biggest push **down**: *{top_down}*."
     )
-    contrib_df = (
-        pd.DataFrame({"factor": list(contribs), "effect": list(contribs.values())})
-        .sort_values("effect")
-        .set_index("factor")
+    contrib_df = pd.DataFrame(
+        {"factor": list(contribs), "effect": list(contribs.values())}
     )
-    st.bar_chart(contrib_df, horizontal=True)
+    st.altair_chart(
+        alt.Chart(contrib_df)
+        .mark_bar()
+        .encode(
+            y=alt.Y("factor:N", sort="-x", axis=alt.Axis(labelLimit=300), title=None),
+            x=alt.X("effect:Q", title="Push on risk (log-odds)"),
+            color=alt.condition(
+                "datum.effect > 0", alt.value("#c0392b"), alt.value("#1f6f8b")
+            ),
+            tooltip=[
+                alt.Tooltip("factor:N", title="Factor"),
+                alt.Tooltip("effect:Q", title="Push on risk", format="+.3f"),
+            ],
+        ),
+        width="stretch",
+    )
     st.caption(
         "Bars to the right raise this patient's risk, bars to the left lower it "
         "(SHAP values, log-odds scale)."
@@ -355,6 +390,7 @@ with tab_fair:
         "to even.",
     )
     cap_df = pd.DataFrame(cap_slices[attr]).T
+    cap_df.index = pd.Index([group_label(g) for g in cap_df.index])
     chart_df = (
         cap_df[["share_of_no_shows", "share_of_list"]]
         .rename(
@@ -380,7 +416,11 @@ with tab_fair:
             ),
             yOffset=alt.YOffset("Measure:N"),
             x=alt.X("Share:Q", title="Share", axis=alt.Axis(format="%")),
-            color=alt.Color("Measure:N", title=None),
+            color=alt.Color(
+                "Measure:N",
+                title=None,
+                scale=alt.Scale(range=["#1f6f8b", "#9cc3d5"]),
+            ),
             tooltip=[
                 "Group",
                 "Measure",
@@ -409,19 +449,32 @@ with tab_fair:
         slices = cast("dict[str, dict[str, dict[str, object]]]", fair["slices"])
         for name, groups in slices.items():
             st.markdown(f"**{SLICE_LABELS.get(name, name)}**")
+            tbl = pd.DataFrame(groups).T[
+                ["n", "base_rate", "selection_rate", "fpr", "fnr", "ece"]
+            ]
+            tbl.index = pd.Index([group_label(g) for g in tbl.index])
+            for col in ("base_rate", "selection_rate", "fpr", "fnr"):
+                tbl[col] = tbl[col].astype(float) * 100
+            pct = st.column_config.NumberColumn(format="%.1f%%")
             st.dataframe(
-                pd.DataFrame(groups)
-                .T[["n", "base_rate", "selection_rate", "fpr", "fnr", "ece"]]
-                .rename(
+                tbl.rename(
                     columns={
-                        "base_rate": "no-show rate",
-                        "selection_rate": "flagged",
+                        "n": "Appointments",
+                        "base_rate": "No-show rate",
+                        "selection_rate": "Flagged",
                         "fpr": "FPR",
                         "fnr": "FNR (missed)",
-                        "ece": "calibration error",
+                        "ece": "Calibration error",
                     }
                 ),
                 width="stretch",
+                column_config={
+                    "No-show rate": pct,
+                    "Flagged": pct,
+                    "FPR": pct,
+                    "FNR (missed)": pct,
+                    "Calibration error": st.column_config.NumberColumn(format="%.3f"),
+                },
             )
 
 # --------------------------------------------------------------------------- impact
