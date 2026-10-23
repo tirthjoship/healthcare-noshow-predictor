@@ -1,4 +1,4 @@
-"""XGBoostPredictor — gradient-boosted tree adapter implementing NoShowPredictorPort.
+"""XGBoostPredictor: gradient-boosted tree adapter implementing NoShowPredictorPort.
 
 Uses XGBClassifier with scale_pos_weight to handle the ~20% no-show class imbalance
 (ADR-locked: scale_pos_weight=4 approximates 80/20 majority/minority ratio).
@@ -18,7 +18,7 @@ from domain.models import Appointment, NoShowOutcome
 class XGBoostPredictor:
     """XGBoost gradient-boosted tree adapter for no-show risk prediction.
 
-    Implements NoShowPredictorPort (structural duck-typing — no explicit
+    Implements NoShowPredictorPort (structural duck-typing, no explicit
     inheritance to keep domain free of adapter imports).
 
     Usage:

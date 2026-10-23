@@ -14,11 +14,10 @@ SMS_received=1 correlates with higher no-show rate (Simpson's paradox). SMS is s
 - Model card: SMS coefficient is not causal
 - SHAP narrative: explain Simpson's paradox
 - README Limitations section
-- Interview talking point
 
 ## Consequences
 
 - Preserves useful signal (SMS proxies "clinic flagged as risky")
 - Demonstrates understanding of observational data limitations
 - Documented in 3+ locations to prevent misinterpretation
-- Strong portfolio differentiator for stats-savvy interviewers
+- Shows the difference between predictive and causal reading of a feature

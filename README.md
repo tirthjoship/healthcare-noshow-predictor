@@ -23,18 +23,18 @@ This system:
 
 ### Key Finding
 
-> **"This is an operations problem, not a clinical one."** SHAP confirms it quantitatively: `lead_time_days` (mean |SHAP| 0.84) and `age` (0.24) dominate, while the clinical features (diabetes 0.019, hypertension 0.008, handicap 0.005) are the three *least* important of all. Scheduling practices drive no-shows far more than patient health conditions.
+> **"This is an operations problem, not a clinical one."** SHAP confirms it quantitatively: `lead_time_days` (mean |SHAP| 0.94) and `age` (0.25) dominate, while the clinical features (diabetes 0.016, alcoholism 0.016, hypertension 0.010, handicap 0.006) are the four *least* important of all. Same-day bookings miss about 5% of the time; next-day bookings about 21%. Scheduling practices drive no-shows far more than patient health conditions.
 
 ### Results at a glance
 
 | What | Result |
 |------|--------|
-| Ranking quality (calibrated XGBoost) | AUC **0.724**, ECE **0.007** (5-fold GroupKFold) |
-| Top no-show driver (SHAP) | `lead_time_days`, ~3.5x the next feature |
-| Fairness | Gender parity (FPR gap 0.002); age & SMS-confound gaps surfaced honestly |
-| Calibration within every slice | ECE ≤ 0.022 per demographic group |
-| Projected value (labeled what-if) | ~**$44K/month** recoverable (20 calls/day, $200/slot) |
-| Quality gates | **91 tests**, mypy strict, 81% coverage |
+| Ranking quality (calibrated XGBoost) | AUC **0.731**, ECE **0.006** (5-fold GroupKFold); June holdout AUC **0.724** |
+| Top no-show driver (SHAP) | `lead_time_days`, ~3.75x the next feature |
+| Fairness | Gender parity (FPR gap 0.004). **Patients 55+ are 21% of no-shows but 0.8% of the top-20/day call list** ([ADR-013](docs/adr/ADR-013-age-disparity-at-capacity.md)) |
+| Calibration within every slice | ECE ≤ 0.036 per group (≤ 0.023 per age band) |
+| Call-list hit rate | **43%** of the top 20 per day really miss (vs ~18% at random), ~**8.7 slots/day** recoverable (upper bound; 43 to 45% depending on how tied scores are ordered) |
+| Quality gates | **95 tests**, mypy strict, ≥75% coverage gate |
 
 ---
 
@@ -48,17 +48,18 @@ flowchart LR
         direction LR
         J0["Domain pivot<br/>readmission to no-show<br/>ADR-001"]
         J1["EDA gate<br/>20.2 pct no-show, AUC 0.656<br/>GO decision"]
+        J1b["Lead-time audit<br/>same-day vs next-day fix<br/>ADR-014"]
         J2["Leakage-safe features<br/>scheduling-time only<br/>DataLeakageError guard"]
         J3["SMS confound handled<br/>Simpson paradox, documented<br/>ADR-006"]
         J4["Validation<br/>GroupKFold by PatientId<br/>plus temporal holdout, ADR-011"]
         J5["Model lineup<br/>LogReg, XGBoost,<br/>Calibrated XGBoost"]
-        J6["Calibration win<br/>Brier 0.214 to 0.145<br/>ECE 0.247 to 0.007"]
-        J0 --> J1 --> J2 --> J3 --> J4 --> J5 --> J6
+        J6["Calibration win<br/>Brier 0.213 to 0.144<br/>ECE 0.240 to 0.006"]
+        J0 --> J1 --> J1b --> J2 --> J3 --> J4 --> J5 --> J6
     end
     subgraph PHASE2["Built and tested - Phase 2"]
         direction LR
         P1["SHAP explanations<br/>lead time and age dominate<br/>ADR-012"]
-        P2["Fairness slices<br/>FPR/FNR + calibration<br/>ADR-009"]
+        P2["Fairness slices<br/>threshold + top-K per day<br/>ADR-009, ADR-013"]
         P3["Streamlit call-list demo<br/>ADR-010"]
         P4["Business impact model<br/>ADR-004"]
         P1 --> P2 --> P3 --> P4
@@ -82,7 +83,7 @@ flowchart TB
     subgraph DOMAIN["Domain - pure Python, zero external imports"]
         DM["models.py<br/>Patient, Appointment, NoShowOutcome"]
         DP["ports.py<br/>AppointmentRepository<br/>NoShowPredictorPort"]
-        DS["services.py<br/>baseline risk heuristic"]
+        DS["services.py<br/>risk heuristic + impact model"]
         DE["exceptions.py<br/>DataLeakageError"]
     end
     subgraph ADAPTERS["Adapters - external connections"]
@@ -113,7 +114,7 @@ healthcare-noshow-predictor/
 ├── domain/                 # Pure Python, zero external imports
 │   ├── models.py          # Patient, Appointment, NoShowOutcome
 │   ├── ports.py           # AppointmentRepository, NoShowPredictorPort
-│   ├── services.py        # Baseline no-show risk heuristic
+│   ├── services.py        # Risk heuristic + business-impact model
 │   └── exceptions.py      # DataLeakageError, domain errors
 ├── adapters/              # External connections
 │   ├── data/              # KaggleAppointmentCSVRepository
@@ -125,9 +126,9 @@ healthcare-noshow-predictor/
 ├── scripts/               # run_training, run_phase2, export_demo
 ├── streamlit_app.py       # Interactive call-list demo (Community Cloud)
 ├── demo/                  # Precomputed scored_appointments.csv for the demo
-├── tests/                 # Unit + property-based (Hypothesis), 91 tests
+├── tests/                 # Unit + property-based (Hypothesis), 95 tests
 ├── notebooks/             # EDA only, no production logic
-├── docs/adr/              # 12 Architecture Decision Records
+├── docs/adr/              # 14 Architecture Decision Records
 └── reports/               # EDA gate, model metrics, fairness, shap/
 ```
 
@@ -141,10 +142,10 @@ healthcare-noshow-predictor/
 |----------|-------|
 | Source | [Kaggle Medical Appointments](https://www.kaggle.com/datasets/joniarroba/noshowappointments) |
 | File | `KaggleV2-May-2016.csv` |
-| Rows | 110,527 appointments |
+| Rows | 110,527 appointments (110,522 after dropping 5 impossible rows, ADR-014) |
 | Patients | 62,299 unique (39% have multiple appointments) |
 | Target | No-show rate: **20.2%** |
-| Period | April 29 – June 8, 2016 |
+| Period | April 29 to June 8, 2016 |
 
 **Leakage rule:** All features must be knowable at scheduling time. `DataLeakageError` raised if post-appointment features detected.
 
@@ -154,9 +155,11 @@ healthcare-noshow-predictor/
 
 ## EDA Gate Results
 
+*Frozen pre-fix values from the May 2026 gate. Lead-time handling was later corrected (ADR-014); the gate verdict is unchanged.*
+
 | Gate | Criterion | Result | Status |
 |------|-----------|--------|--------|
-| Target rate | 15–30% | 20.2% | ✅ |
+| Target rate | 15 to 30% | 20.2% | ✅ |
 | Logistic AUC | ≥ 0.65 | 0.6558 | ✅ |
 | Feature dominance | No single >80% | max 32.9% | ✅ |
 | Missing values | 0 | 0 | ✅ |
@@ -182,19 +185,19 @@ Full report: [`reports/eda_gate.md`](reports/eda_gate.md)
 
 | Model | AUC | F1 | Brier | ECE | Precision@20 |
 |-------|-----|-----|-------|-----|-------------|
-| Logistic | 0.6565 ± 0.0045 | 0.4005 ± 0.0029 | 0.1550 ± 0.0024 | 0.0245 ± 0.0018 | 0.38 ± 0.11 |
-| XGBoost | 0.7236 ± 0.0033 | 0.4459 ± 0.0064 | 0.2144 ± 0.0009 | 0.2471 ± 0.0046 | 0.54 ± 0.09 |
-| **Calibrated XGBoost** | **0.7237 ± 0.0031** | **0.4453 ± 0.0065** | **0.1452 ± 0.0017** | **0.0070 ± 0.0011** | **0.48 ± 0.08** |
+| Logistic | 0.6605 ± 0.0050 | 0.4029 ± 0.0036 | 0.1548 ± 0.0016 | 0.0259 ± 0.0025 | 0.37 ± 0.07 |
+| XGBoost | 0.7313 ± 0.0039 | 0.4480 ± 0.0040 | 0.2129 ± 0.0019 | 0.2402 ± 0.0036 | 0.50 ± 0.16 |
+| **Calibrated XGBoost** | **0.7311 ± 0.0042** | **0.4471 ± 0.0033** | **0.1440 ± 0.0015** | **0.0059 ± 0.0020** | **0.53 ± 0.11** |
 
 ### Temporal Holdout (June 2016)
 
 | Model | AUC | F1 | Brier | ECE |
 |-------|-----|-----|-------|-----|
-| Logistic | 0.6596 | 0.3856 | 0.1455 | 0.0319 |
-| XGBoost | 0.7160 | 0.4165 | 0.2155 | 0.2635 |
-| **Calibrated XGBoost** | **0.7158** | **0.4164** | **0.1377** | **0.0156** |
+| Logistic | 0.6626 | 0.3877 | 0.1453 | 0.0344 |
+| XGBoost | 0.7234 | 0.4162 | 0.2145 | 0.2570 |
+| **Calibrated XGBoost** | **0.7238** | **0.4156** | **0.1367** | **0.0165** |
 
-**Key insight:** Calibration preserves AUC (0.724) while improving probability quality. Brier drops from 0.214 to 0.145, ECE from 0.247 to 0.007. This matters for ranked call lists where probability ordering determines who gets called.
+**Key insight:** Calibration preserves AUC (0.731) while improving probability quality. Brier drops from 0.213 to 0.144, ECE from 0.240 to 0.006. (Numbers regenerated after the ADR-014 lead-time fix; before it, AUC was 0.724 and ECE 0.007.) This matters for ranked call lists where probability ordering determines who gets called.
 
 Full metrics: [`reports/model_metrics.json`](reports/model_metrics.json)
 
@@ -208,12 +211,12 @@ Global feature importance over 5,000 sampled appointments (mean |SHAP| on the XG
 
 | Rank | Feature | Mean \|SHAP\| |
 |------|---------|--------------|
-| 1 | `lead_time_days` | 0.838 |
-| 2 | `age` | 0.236 |
-| 3 | `neighbourhood` | 0.121 |
-| 4 | `sms_received` | 0.082 |
-| 5–7 | scholarship, gender, alcoholism | < 0.03 |
-| 8–10 | **diabetes, hypertension, handicap** | **< 0.02, the three least important** |
+| 1 | `lead_time_days` | 0.944 |
+| 2 | `age` | 0.252 |
+| 3 | `neighbourhood` | 0.115 |
+| 4 | `sms_received` | 0.085 |
+| 5 to 6 | gender, scholarship | < 0.04 |
+| 7 to 10 | **diabetes, alcoholism, hypertension, handicap** | **< 0.02, the four least important** |
 
 The clinical comorbidities are the lowest-impact features of all: the quantitative backing for the "operations, not clinical" framing. Per-patient attributions power the demo's drill-down. Beeswarm: [`reports/shap/shap_beeswarm.png`](reports/shap/shap_beeswarm.png); full data: [`reports/shap/global_importance.json`](reports/shap/global_importance.json).
 
@@ -221,22 +224,33 @@ The clinical comorbidities are the lowest-impact features of all: the quantitati
 
 ## Fairness (per-slice)
 
-Error rates and calibration by demographic slice on the June holdout (n = 26,451), at the F1-optimal threshold (0.22). See [ADR-009](docs/adr/ADR-009-fairness-reporting.md).
+Measured on the June holdout (n = 26,451) at **two settings**. See [ADR-009](docs/adr/ADR-009-fairness-reporting.md) and [ADR-013](docs/adr/ADR-013-age-disparity-at-capacity.md).
 
-| Slice | Base rate | FPR | FNR | ECE |
-|-------|-----------|-----|-----|-----|
-| Female | 0.183 | 0.422 | 0.249 | 0.018 |
-| Male | 0.188 | 0.420 | 0.245 | 0.011 |
-| Age 18–34 | 0.223 | 0.509 | 0.101 | 0.016 |
-| Age 55+ | 0.144 | 0.251 | 0.576 | 0.017 |
-| SMS received | 0.261 | 0.769 | 0.140 | 0.021 |
-| No SMS | 0.127 | 0.200 | 0.414 | 0.012 |
+**1. At the setting the app uses: top 20 per day** (6 days, 120 calls)
+
+| Age band | Share of appointments | Share of no-shows | Share of the call list |
+|----------|-------------------|-------------------|------------------------|
+| 0-17 | 24.6% | 26.8% | 36.7% |
+| 18-34 | 21.1% | 25.5% | 46.7% |
+| 35-54 | 27.3% | 26.5% | 15.8% |
+| **55+** | 27.0% | 21.2% | **0.8%** |
+
+**2. Screening view: one threshold (0.22)**, F1-optimal and tuned on the June holdout itself, so slightly optimistic.
+
+| Slice | No-show rate | FPR | FNR | ECE |
+|-------|--------------|-----|-----|-----|
+| Female | 0.183 | 0.438 | 0.230 | 0.019 |
+| Male | 0.188 | 0.435 | 0.234 | 0.013 |
+| Age 18-34 | 0.223 | 0.557 | 0.066 | 0.016 |
+| Age 55+ | 0.144 | 0.244 | 0.593 | 0.021 |
+| SMS received | 0.261 | 0.754 | 0.152 | 0.022 |
+| No SMS | 0.127 | 0.235 | 0.354 | 0.013 |
 
 **Findings, surfaced not hidden:**
-- **Gender: fair.** FPR gap 0.002, FNR gap 0.004.
-- **Calibration holds within every slice.** Per-group ECE ≤ 0.022, not just in aggregate.
-- **Age: a real disparity.** The list skews young; patients 55+ are under-flagged (FNR 0.58) because they no-show less. A limitation to monitor, not a bug.
-- **SMS gap** reflects the documented Simpson's-paradox confound ([ADR-006](docs/adr/ADR-006-sms-confound.md)), now visible through the fairness lens.
+- **Gender: balanced.** FPR gap 0.004, FNR gap 0.004.
+- **Calibration holds within every slice** (ECE ≤ 0.036), not just in aggregate.
+- **Age: a real disparity at the operating point.** Patients 55+ no-show less, so a raw-risk ranking almost never puts them on a short list. The scores are honest; the ranking policy is the issue. Fixing it is a policy choice (per-group capacity, equal-FNR thresholds, or benefit-based ranking) that needs clinical and equity input, so it is disclosed, not patched ([ADR-013](docs/adr/ADR-013-age-disparity-at-capacity.md)).
+- **SMS gap** reflects the documented selection-effect confound ([ADR-006](docs/adr/ADR-006-sms-confound.md)).
 
 Full report: [`reports/fairness.json`](reports/fairness.json).
 
@@ -260,28 +274,29 @@ flowchart TD
 
 ## Business Impact Model
 
-A labeled *what-if* projection ([ADR-004](docs/adr/ADR-004-revenue-based-impact.md)), computed from the June holdout:
+A labeled *what-if* ([ADR-004](docs/adr/ADR-004-revenue-based-impact.md), amended 2026-10-23), led by **appointment slots**, not dollars:
 
 ```
-precision@20 (calibrated, holdout) = 0.50
-recoverable_slots/day = 20 calls × 0.50    = 10
-monthly_value = 10 × $200 × 22 working_days ≈ $44,000   (~$528,000/year)
+hit rate, top 20 per appointment day (June holdout) = 0.43
+recoverable slots/day   = 20 calls × 0.43          ≈ 8.7
+recoverable slots/month = 8.7 × 22 working days    ≈ 191
+value                   = slots × cost per slot    (editable in the app; default USD 200)
 ```
 
-**Assumptions labeled, not hidden:** `$200/slot` is a primary-care literature estimate (not clinic data); this is an upper bound that assumes every correctly-flagged, called no-show recovers a slot; a real pilot would apply a call-to-recovery conversion rate. Full data: [`reports/business_impact.json`](reports/business_impact.json).
+**Assumptions labeled, not hidden:** this is an upper bound that assumes every correctly-flagged, called patient keeps or rebooks their slot. The default cost is a US primary-care literature estimate, not clinic data. An earlier version used the top 20 across the whole holdout week (0.55), which overstated the per-day hit rate. Full data: [`reports/business_impact.json`](reports/business_impact.json).
 
 ---
 
 ## Interactive Demo
 
-A Streamlit app renders a **daily call list** (pick a day + call capacity K), a **SHAP drill-down** per patient, the **fairness** tables, and the **business-impact** projection, all from precomputed artifacts, so it needs no model training or raw data at runtime.
+A six-tab Streamlit app (plain language first): **Start here**, a **daily call list** (pick a day + call capacity K), a **SHAP drill-down** per patient, **fairness** at the call-list setting, **impact** in appointment slots, and **how we built it**, all from precomputed artifacts, so it needs no model training or raw data at runtime.
 
 ```bash
 pip install -e ".[demo]"
 streamlit run streamlit_app.py
 ```
 
-*Live demo: deploying to Streamlit Community Cloud (URL to follow).* Regenerate the artifacts with `python scripts/run_phase2.py && python scripts/export_demo.py`.
+*Live demo: deploying to Streamlit Community Cloud (URL to follow).* Regenerate the artifacts with `python scripts/run_training.py && python scripts/run_phase2.py && python scripts/export_demo.py`.
 
 ---
 
@@ -293,7 +308,7 @@ streamlit run streamlit_app.py
 | ML | scikit-learn, XGBoost |
 | Explainability | SHAP (TreeExplainer) |
 | Demo | Streamlit (Community Cloud) |
-| Testing | pytest, Hypothesis (property-based), 91 tests |
+| Testing | pytest, Hypothesis (property-based), 95 tests |
 | Quality | black, isort, mypy (strict), ruff, pre-commit |
 | CI | GitHub Actions (lint, test, security) |
 
@@ -314,7 +329,8 @@ pre-commit install
 make test
 make check
 
-# Regenerate Phase 2 artifacts (SHAP, fairness, business impact) + demo data
+# Regenerate all artifacts: model metrics, Phase 2 (SHAP, fairness, impact), demo data
+python scripts/run_training.py
 python scripts/run_phase2.py
 python scripts/export_demo.py
 
@@ -333,29 +349,32 @@ streamlit run streamlit_app.py
 | 1 | Adapters + model training | ✅ Complete (3 models) |
 | 2 | SHAP, fairness, business impact | ✅ Complete |
 | 2.5 | Streamlit call-list demo | ✅ Built (Community Cloud deploy pending) |
+| 2.6 | Pre-ship audit: lead-time fix, fairness at operating point | ✅ Complete (ADR-013, ADR-014) |
 
-**91 tests** total (unit + property-based), mypy strict, 81% coverage.
+**95 tests** total (unit + property-based), mypy strict, 83% coverage (gate 75%).
 
 ---
 
 ## Architecture Decision Records
 
-12 ADRs in [`docs/adr/`](docs/adr/):
+14 ADRs in [`docs/adr/`](docs/adr/). The full story, level by level, is in [`docs/DECISION_TREE.md`](docs/DECISION_TREE.md).
 
 | ADR | Decision |
 |-----|----------|
 | [001](docs/adr/ADR-001-pivot-to-noshow.md) | Pivot from readmission to no-show |
 | [002](docs/adr/ADR-002-primary-persona.md) | Primary persona: outreach team |
 | [003](docs/adr/ADR-003-daily-call-list.md) | Daily call list intervention |
-| [004](docs/adr/ADR-004-revenue-based-impact.md) | Revenue-based impact ($200/slot) |
+| [004](docs/adr/ADR-004-revenue-based-impact.md) | Impact model; amended: slots first, per-day precision |
 | [005](docs/adr/ADR-005-capacity-constrained-topk.md) | Capacity-constrained top-K threshold |
 | [006](docs/adr/ADR-006-sms-confound.md) | SMS confound documentation |
 | [007](docs/adr/ADR-007-target-encoding.md) | Target encoding (train-only) |
 | [008](docs/adr/ADR-008-model-lineup.md) | Logistic → XGBoost → Calibrated XGBoost |
-| [009](docs/adr/ADR-009-fairness-reporting.md) | FPR/FNR + calibration per slice |
-| [010](docs/adr/ADR-010-streamlit-demo.md) | Call list + SHAP drill-down demo |
+| [009](docs/adr/ADR-009-fairness-reporting.md) | FPR/FNR + calibration per slice; amended: capacity view, neighbourhood slice |
+| [010](docs/adr/ADR-010-streamlit-demo.md) | Streamlit demo; amended: 6 plain-language tabs |
 | [011](docs/adr/ADR-011-split-strategy.md) | GroupKFold + temporal holdout |
 | [012](docs/adr/ADR-012-shap-narrative.md) | "Operations, not clinical" framing |
+| [013](docs/adr/ADR-013-age-disparity-at-capacity.md) | 55+ under-served by raw-risk call list: disclose, don't patch yet |
+| [014](docs/adr/ADR-014-lead-time-calendar-days.md) | Lead time = calendar days; drop impossible rows |
 
 ---
 
@@ -363,9 +382,11 @@ streamlit run streamlit_app.py
 
 - **Public benchmark data**: not production clinical data
 - **SMS confound**: SMS_received coefficient is not causal (Simpson's paradox)
-- **Narrow time window**: dataset covers ~6 weeks (April–June 2016)
+- **Narrow time window**: dataset covers ~6 weeks (April to June 2016)
 - **Single clinic system**: Vitória, Brazil; may not generalize to other geographies
 - **No cost optimization**: threshold is capacity-based, not cost-optimized
+- **Raw-risk ranking under-serves older patients** (ADR-013): disclosed, not patched; needs a policy decision
+- **Short holdout**: June covers 6 days, so per-day results rest on small samples
 
 ---
 
@@ -373,7 +394,7 @@ streamlit run streamlit_app.py
 
 **Tirth Joshi**
 UBC Master of Data Science
-Former Data Systems Analyst, Vancouver General Hospital
+Former Data Systems Analyst, VGH & UBC Hospital Foundation
 
 ---
 

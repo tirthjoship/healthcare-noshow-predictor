@@ -22,6 +22,5 @@ Global SHAP: bar chart showing lead_time >> age >> SMS >> scholarship >> clinica
 ## Consequences
 
 - Reframes problem in surprising, insightful way
-- Strong interview talking point
 - Supports outreach persona (operations staff, not clinicians)
 - Global + 3 local examples in `docs/` and Streamlit drill-down

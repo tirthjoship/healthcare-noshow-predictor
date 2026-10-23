@@ -1,0 +1,15 @@
+{
+  "precision_at_k": 0.4333,
+  "daily_call_capacity": 20.0,
+  "cost_per_noshow": 200.0,
+  "working_days_per_month": 22.0,
+  "recoverable_slots_per_day": 8.666,
+  "recoverable_slots_per_month": 190.65,
+  "monthly_value": 38130.4,
+  "annual_value": 457564.8,
+  "precision_source": "calibrated_xgboost, top-20 per appointment day, 2016-06 holdout (6 days, 120 calls)",
+  "assumptions": {
+    "cost_per_noshow": "USD 200, primary-care literature estimate (labeled, not clinic data; editable in the app)",
+    "conversion": "assumes every correctly-flagged, called no-show recovers a slot (upper bound; real conversion is lower)"
+  }
+}

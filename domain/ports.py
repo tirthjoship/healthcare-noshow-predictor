@@ -1,7 +1,7 @@
 """Port interfaces (protocols) for appointment no-show prediction.
 
 Adapters implement these ports; domain and application depend only
-on these abstractions. Ports enforce leakage prevention — all features
+on these abstractions. Ports enforce leakage prevention, all features
 must be knowable at scheduling time.
 """
 

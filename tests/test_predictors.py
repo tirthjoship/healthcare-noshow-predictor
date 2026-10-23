@@ -1,4 +1,4 @@
-"""Tests for LogisticPredictor — train, predict, and error handling."""
+"""Tests for LogisticPredictor: train, predict, and error handling."""
 
 from datetime import datetime
 

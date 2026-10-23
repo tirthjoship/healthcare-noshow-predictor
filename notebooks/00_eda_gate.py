@@ -1,5 +1,5 @@
 """
-Phase 0 EDA Gate — Healthcare Appointment No-Show
+Phase 0 EDA Gate, Healthcare Appointment No-Show
 Generates 00_eda_gate.ipynb programmatically and runs all analysis.
 """
 
@@ -190,7 +190,7 @@ print("\nFeature coefficients:")
 print(coef_df.to_string(index=False))
 
 # ── 10. SHAP dominance check ────────────────────────────────────────
-# Use coefficient magnitude as proxy — check no single feature >80%
+# Use coefficient magnitude as proxy, check no single feature >80%
 total_abs = coef_df["abs_coef"].sum()
 coef_df["pct_importance"] = (coef_df["abs_coef"] / total_abs * 100).round(1)
 max_pct = coef_df["pct_importance"].max()
@@ -200,12 +200,12 @@ print(f"SHAP dominance check (no single >80%): {'PASS' if shap_pass else 'FAIL'}
 
 # ── 11. SMS confound documentation ──────────────────────────────────
 print("\n=== SMS CONFOUND ANALYSIS ===")
-# SMS is sent to patients who previously no-showed — it's an intervention, not a predictor
+# SMS is sent to patients who previously no-showed, it's an intervention, not a predictor
 # Higher no-show rate among SMS_received=1 is Simpson's paradox
 sms_lead = df.groupby("SMS_received")["lead_time_days"].mean()
 print(f"Mean lead time (no SMS): {sms_lead[0]:.1f} days")
 print(f"Mean lead time (SMS):    {sms_lead[1]:.1f} days")
-print("SMS recipients have longer lead times — confound confirmed.")
+print("SMS recipients have longer lead times, confound confirmed.")
 print("Document: SMS_received is post-hoc intervention. Include with caveat.")
 
 # ── GATE VERDICTS ────────────────────────────────────────────────────
@@ -261,7 +261,7 @@ overall = "GO" if all_pass else "NO-GO"
 print(f"\n{'🟢' if all_pass else '🔴'} OVERALL VERDICT: {overall}")
 
 # ── Save report ──────────────────────────────────────────────────────
-report = f"""# EDA Gate Report — Healthcare Appointment No-Show
+report = f"""# EDA Gate Report, Healthcare Appointment No-Show
 
 **Date:** 2026-05-30
 **Dataset:** `KaggleV2-May-2016.csv`
@@ -274,12 +274,12 @@ report = f"""# EDA Gate Report — Healthcare Appointment No-Show
 - **14 columns**, all expected present
 - **Zero nulls** across all columns
 - Dtypes: 2 datetime (parsed), 5 binary, 1 categorical (Neighbourhood), 1 continuous (Age)
-- Negative lead_time rows: {neg_lead} ({neg_lead/len(df)*100:.2f}%) — clipped to 0
+- Negative lead_time rows: {neg_lead} ({neg_lead/len(df)*100:.2f}%), clipped to 0
 
 ## 2. Target Distribution
 
 - **No-show rate: {target_rate*100:.1f}%** (within expected 15-30% range)
-- Class imbalance ~80/20 — moderate, manageable with stratification
+- Class imbalance ~80/20, moderate, manageable with stratification
 
 ## 3. Feature Analysis
 
@@ -289,7 +289,7 @@ report = f"""# EDA Gate Report — Healthcare Appointment No-Show
 - Same-day appointments have lowest no-show rate
 
 ### SMS Received (CONFOUND)
-- **SMS_received=1 has HIGHER no-show rate** — Simpson's paradox
+- **SMS_received=1 has HIGHER no-show rate**: Simpson's paradox
 - SMS recipients have longer lead times (mean {sms_lead[1]:.1f} vs {sms_lead[0]:.1f} days)
 - SMS is sent as intervention to high-risk patients → post-hoc feature
 - **Decision:** Include with documented caveat. Model should not be interpreted as "SMS causes no-shows"
@@ -321,7 +321,7 @@ for _, row in coef_df.iterrows():
     )
 
 report += f"""
-- No single feature dominates (max {max_pct:.1f}%) — healthy signal distribution
+- No single feature dominates (max {max_pct:.1f}%), healthy signal distribution
 
 ## 5. Gate Verdicts
 
@@ -331,7 +331,7 @@ report += f"""
 
 for name, v in verdicts.items():
     status = "PASS ✅" if v["pass"] else "FAIL ❌"
-    report += f"| {name} | — | {v['value']} | {status} |\n"
+    report += f"| {name} |, | {v['value']} | {status} |\n"
 
 report += f"""
 ## Overall Verdict: **{overall}** {'🟢' if all_pass else '🔴'}
@@ -340,11 +340,11 @@ report += f"""
 
 ## Risks & Notes
 
-1. **SMS confound** — document in model card; do not interpret SMS coefficient causally
-2. **Grouped split required** — repeat patients must stay in same fold
-3. **Neighbourhood encoding** — use target encoding on train only to prevent leakage
-4. **Lead time** is strongest univariate signal — expected and healthy
-5. **Age outliers** — some negative ages exist (likely data entry errors); minimal count
+1. **SMS confound**: document in model card; do not interpret SMS coefficient causally
+2. **Grouped split required**: repeat patients must stay in same fold
+3. **Neighbourhood encoding**: use target encoding on train only to prevent leakage
+4. **Lead time** is strongest univariate signal: expected and healthy
+5. **Age outliers**: some negative ages exist (likely data entry errors); minimal count
 """
 
 (REPORTS / "eda_gate.md").write_text(report)
