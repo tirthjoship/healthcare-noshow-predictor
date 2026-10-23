@@ -143,7 +143,7 @@ with tab_start:
         "Hit rate on the call list",
         f"{float(cast(float, impact['precision_at_k'])):.0%}",
         help="Share of the top 20 patients per day who really did not show up "
-        "(June test data). The overall no-show rate is about 20%.",
+        "(June test data). The June no-show rate is about 18%.",
     )
 
     st.subheader("Three things we found")

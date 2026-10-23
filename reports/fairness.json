@@ -204,14 +204,14 @@
           "n": 17316.0,
           "no_shows_captured": 0.012,
           "share_of_list": 0.5833,
-          "share_of_patients": 0.6546,
+          "share_of_appointments": 0.6546,
           "share_of_no_shows": 0.6483
         },
         "M": {
           "n": 9135.0,
           "no_shows_captured": 0.0082,
           "share_of_list": 0.4167,
-          "share_of_patients": 0.3454,
+          "share_of_appointments": 0.3454,
           "share_of_no_shows": 0.3517
         }
       },
@@ -220,28 +220,28 @@
           "n": 6499.0,
           "no_shows_captured": 0.0115,
           "share_of_list": 0.3667,
-          "share_of_patients": 0.2457,
+          "share_of_appointments": 0.2457,
           "share_of_no_shows": 0.2677
         },
         "18-34": {
           "n": 5584.0,
           "no_shows_captured": 0.0217,
           "share_of_list": 0.4667,
-          "share_of_patients": 0.2111,
+          "share_of_appointments": 0.2111,
           "share_of_no_shows": 0.2554
         },
         "35-54": {
           "n": 7216.0,
           "no_shows_captured": 0.0077,
           "share_of_list": 0.1583,
-          "share_of_patients": 0.2728,
+          "share_of_appointments": 0.2728,
           "share_of_no_shows": 0.2653
         },
         "55+": {
           "n": 7152.0,
           "no_shows_captured": 0.0,
           "share_of_list": 0.0083,
-          "share_of_patients": 0.2704,
+          "share_of_appointments": 0.2704,
           "share_of_no_shows": 0.2116
         }
       },
@@ -250,14 +250,14 @@
           "n": 15081.0,
           "no_shows_captured": 0.0194,
           "share_of_list": 0.75,
-          "share_of_patients": 0.5701,
+          "share_of_appointments": 0.5701,
           "share_of_no_shows": 0.3916
         },
         "sms": {
           "n": 11370.0,
           "no_shows_captured": 0.0051,
           "share_of_list": 0.25,
-          "share_of_patients": 0.4299,
+          "share_of_appointments": 0.4299,
           "share_of_no_shows": 0.6084
         }
       },
@@ -266,14 +266,14 @@
           "n": 23890.0,
           "no_shows_captured": 0.0062,
           "share_of_list": 0.7,
-          "share_of_patients": 0.9032,
+          "share_of_appointments": 0.9032,
           "share_of_no_shows": 0.8902
         },
         "scholarship": {
           "n": 2561.0,
           "no_shows_captured": 0.0466,
           "share_of_list": 0.3,
-          "share_of_patients": 0.0968,
+          "share_of_appointments": 0.0968,
           "share_of_no_shows": 0.1098
         }
       },
@@ -282,42 +282,42 @@
           "n": 1893.0,
           "no_shows_captured": 0.0,
           "share_of_list": 0.0167,
-          "share_of_patients": 0.0716,
+          "share_of_appointments": 0.0716,
           "share_of_no_shows": 0.0655
         },
         "JARDIM DA PENHA": {
           "n": 927.0,
           "no_shows_captured": 0.0,
           "share_of_list": 0.0,
-          "share_of_patients": 0.035,
+          "share_of_appointments": 0.035,
           "share_of_no_shows": 0.0293
         },
         "MARIA ORTIZ": {
           "n": 1287.0,
           "no_shows_captured": 0.0,
           "share_of_list": 0.0417,
-          "share_of_patients": 0.0487,
+          "share_of_appointments": 0.0487,
           "share_of_no_shows": 0.0465
         },
         "RESIST\u00caNCIA": {
           "n": 1071.0,
           "no_shows_captured": 0.0209,
           "share_of_list": 0.05,
-          "share_of_patients": 0.0405,
+          "share_of_appointments": 0.0405,
           "share_of_no_shows": 0.0391
         },
         "SANTA MARTHA": {
           "n": 836.0,
           "no_shows_captured": 0.0071,
           "share_of_list": 0.0083,
-          "share_of_patients": 0.0316,
+          "share_of_appointments": 0.0316,
           "share_of_no_shows": 0.0289
         },
         "other": {
           "n": 20437.0,
           "no_shows_captured": 0.0122,
           "share_of_list": 0.8833,
-          "share_of_patients": 0.7726,
+          "share_of_appointments": 0.7726,
           "share_of_no_shows": 0.7907
         }
       }

@@ -38,7 +38,7 @@ class Patient:
 class Appointment:
     """Immutable value object representing a medical appointment.
 
-    All fields are knowable at scheduling time — no post-appointment data.
+    All fields are knowable at scheduling time, no post-appointment data.
 
     Attributes:
         appointment_id: Unique identifier for this appointment.
@@ -52,7 +52,7 @@ class Appointment:
         alcoholism: Whether patient has alcoholism (0/1).
         handicap: Handicap level (0-4).
         sms_received: Whether patient received SMS reminder (0/1).
-            NOTE: This is an intervention feature — document confound.
+            NOTE: This is an intervention feature, document confound.
         lead_time_days: Days between scheduling and appointment (derived).
     """
 

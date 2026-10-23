@@ -52,7 +52,7 @@ def estimate_business_impact(
     This is a labeled *what-if* projection, not a measured outcome:
     - ``cost_per_noshow`` is a primary-care literature estimate, not clinic data.
     - It assumes every correctly-flagged no-show that is called converts to a
-      recovered slot — an upper bound. A real pilot would multiply by a
+      recovered slot, an upper bound. A real pilot would multiply by a
       call-to-recovery conversion rate.
 
     Args:

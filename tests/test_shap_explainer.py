@@ -1,4 +1,4 @@
-"""Tests for adapters/ml/shap_explainer.py — SHAP feature attribution."""
+"""Tests for adapters/ml/shap_explainer.py: SHAP feature attribution."""
 
 from datetime import datetime
 

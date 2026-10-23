@@ -1,4 +1,4 @@
-"""FeatureEncoder — converts Appointment domain objects to numpy feature matrix.
+"""FeatureEncoder: converts Appointment domain objects to numpy feature matrix.
 
 Target encoding for neighbourhood is fit on training labels only (ADR-007).
 """

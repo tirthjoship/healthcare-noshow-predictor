@@ -11,7 +11,7 @@
 - **14 columns**, all expected present
 - **Zero nulls** across all columns
 - Dtypes: 2 datetime (parsed), 5 binary, 1 categorical (Neighbourhood), 1 continuous (Age)
-- Negative lead_time rows: 38568 (34.89%) — clipped to 0
+- Negative lead_time rows: 38568 (34.89%), clipped to 0. **Superseded by ADR-014:** these were same-day bookings, not errors; only 5 rows are truly impossible.
 
 ## 2. Target Distribution
 
@@ -73,7 +73,7 @@
 | 4. No missing values | — | 0 nulls (raw columns) | PASS ✅ |
 | 5. Sufficient volume (>=50k) | — | 110,527 rows | PASS ✅ |
 
-## Overall Verdict: **GO** 🟢
+## Overall Verdict: **GO**
 
 Proceed to Phase 1: domain model pivot and model training.
 

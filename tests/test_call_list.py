@@ -1,4 +1,4 @@
-"""Tests for adapters/visualization/call_list.py — ranking helpers."""
+"""Tests for adapters/visualization/call_list.py: ranking helpers."""
 
 from adapters.visualization.call_list import precision_at_capacity, rank_call_list
 

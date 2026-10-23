@@ -1,14 +1,14 @@
-"""Fairness reporting — per-slice error rates and calibration (ADR-009).
+"""Fairness reporting: per-slice error rates and calibration (ADR-009).
 
 A ranked call list is only trustworthy if it does not systematically under- or
 over-flag protected groups. This module computes, for each demographic slice,
 the metrics that matter for an outreach use case:
 
-- **base rate** — actual no-show rate in the slice (context, not a model metric)
-- **selection rate** — fraction the model would flag at the operating threshold
-- **FPR / FNR** — who gets called unnecessarily vs. missed
-- **precision** — of those flagged, how many truly no-show
-- **ECE** — is the probability honest *within* the slice (calibration can hide
+- **base rate**: actual no-show rate in the slice (context, not a model metric)
+- **selection rate**: fraction the model would flag at the operating threshold
+- **FPR / FNR**: who gets called unnecessarily vs. missed
+- **precision**: of those flagged, how many truly no-show
+- **ECE**: is the probability honest *within* the slice (calibration can hide
   in the aggregate while failing per group)
 
 All functions are pure: numpy in, plain dicts out. No plotting, no I/O.
@@ -163,7 +163,7 @@ def capacity_report(
     A fixed probability threshold describes a screening rule the app never uses.
     The outreach team calls the K riskiest patients each day, so this report asks,
     per group: what share of the group's no-shows make the call list, and is the
-    group's share of the list in line with its share of patients and no-shows?
+    group's share of the list in line with its share of appointments and no-shows?
 
     Args:
         y_true: Binary ground-truth labels (0/1).
@@ -174,7 +174,9 @@ def capacity_report(
 
     Returns:
         Dict with k, n_selected, overall precision/capture, and per-slice groups
-        with no_shows_captured, share_of_list, share_of_patients, share_of_no_shows.
+        with no_shows_captured, share_of_list, share_of_appointments, share_of_no_shows.
+        Ties at the daily cutoff are broken by row order (stable sort); isotonic
+        calibration produces tied scores, so exact precision can shift slightly.
         Capture for a group with no no-shows is NaN.
     """
     y_true = np.asarray(y_true, dtype=float)
@@ -220,7 +222,9 @@ def capacity_report(
                     if n_selected
                     else float("nan")
                 ),
-                "share_of_patients": round(float(mask.sum()) / n_total, 4),
+                "share_of_appointments": (
+                    round(float(mask.sum()) / n_total, 4) if n_total else float("nan")
+                ),
                 "share_of_no_shows": (
                     round(group_no_shows / total_no_shows, 4)
                     if total_no_shows

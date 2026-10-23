@@ -6,7 +6,7 @@
 
 ## Context
 
-Portfolio reviewers will click the demo. Needs to tell a story in 30 seconds.
+Reviewers will click the demo first. It needs to tell the story in 30 seconds.
 
 ## Decision
 

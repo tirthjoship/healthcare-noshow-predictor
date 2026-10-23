@@ -1,4 +1,4 @@
-"""Call-list ranking — pure helpers for the outreach demo (ADR-003, ADR-005).
+"""Call-list ranking: pure helpers for the outreach demo (ADR-003, ADR-005).
 
 The outreach team states a daily call capacity K; the system returns the K
 highest-risk patients. These helpers are UI-agnostic (list[dict] in, list[dict]

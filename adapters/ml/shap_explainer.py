@@ -1,4 +1,4 @@
-"""ShapExplainer — SHAP feature attribution for no-show risk (ADR-012).
+"""ShapExplainer: SHAP feature attribution for no-show risk (ADR-012).
 
 Explains the XGBoost model that sits underneath ``CalibratedPredictor``.
 Isotonic calibration is a monotonic post-transform, so SHAP attributions on the

@@ -20,11 +20,12 @@ monthly_value = top_decile_recovered × precision_at_threshold × $200
 
 - Simple, defensible, one number with citation
 - All assumptions clearly labeled in `docs/BUSINESS_IMPACT.md`
-- Conservative enough for portfolio credibility
+- Conservative enough to be credible
 - Reviewer can substitute their own cost_per_noshow easily
 
 ## Amendment (2026-10-23): slots first, per-day precision
 
 - **Lead with recoverable appointment slots, not dollars.** For a public health audience, patient access is the natural unit, and a large dollar headline reads as overselling.
+- The original `docs/BUSINESS_IMPACT.md` was never written; the assumptions live in `reports/business_impact.json` and the README.
 - **Dollars are an editable assumption** in the app (default USD 200, a US primary-care literature estimate), with an "upper bound" note.
-- **Bug fix:** precision now comes from the top 20 **per appointment day** (the app's operating point, ADR-005), not the top 20 across the whole holdout. That changes 0.55 to **0.43**, i.e. about **8.7 slots/day, about 191/month** at 20 calls/day.
+- **Bug fix:** precision now comes from the top 20 **per appointment day** (the app's operating point, ADR-005), not the top 20 across the whole holdout. That changes 0.55 (the README had published 0.50 from an earlier run) to **0.43** (0.43 to 0.45 depending on how tied scores at the cutoff are ordered), i.e. about **8.7 slots/day, about 191/month** at 20 calls/day.

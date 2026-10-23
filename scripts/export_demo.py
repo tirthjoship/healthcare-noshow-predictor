@@ -2,8 +2,8 @@
 
 Streamlit Community Cloud has no access to the (gitignored) raw Kaggle CSV, and
 training on 71K rows at startup is too heavy for the free tier. So we precompute
-here — calibrated risk scores + per-patient SHAP contributions for a sample of
-the June holdout — and commit a small CSV the app just renders.
+here, calibrated risk scores + per-patient SHAP contributions for a sample of
+the June holdout, and commit a small CSV the app just renders.
 
 Run:  python scripts/export_demo.py
 """

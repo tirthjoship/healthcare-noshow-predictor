@@ -30,10 +30,10 @@ This system:
 | What | Result |
 |------|--------|
 | Ranking quality (calibrated XGBoost) | AUC **0.731**, ECE **0.006** (5-fold GroupKFold); June holdout AUC **0.724** |
-| Top no-show driver (SHAP) | `lead_time_days`, ~3.7x the next feature |
+| Top no-show driver (SHAP) | `lead_time_days`, ~3.75x the next feature |
 | Fairness | Gender parity (FPR gap 0.004). **Patients 55+ are 21% of no-shows but 0.8% of the top-20/day call list** ([ADR-013](docs/adr/ADR-013-age-disparity-at-capacity.md)) |
 | Calibration within every slice | ECE ≤ 0.036 per group (≤ 0.023 per age band) |
-| Call-list hit rate | **43%** of the top 20 per day really miss (vs ~18% at random), ~**8.7 slots/day** recoverable (upper bound) |
+| Call-list hit rate | **43%** of the top 20 per day really miss (vs ~18% at random), ~**8.7 slots/day** recoverable (upper bound; 43 to 45% depending on how tied scores are ordered) |
 | Quality gates | **95 tests**, mypy strict, ≥75% coverage gate |
 
 ---
@@ -83,7 +83,7 @@ flowchart TB
     subgraph DOMAIN["Domain - pure Python, zero external imports"]
         DM["models.py<br/>Patient, Appointment, NoShowOutcome"]
         DP["ports.py<br/>AppointmentRepository<br/>NoShowPredictorPort"]
-        DS["services.py<br/>baseline risk heuristic"]
+        DS["services.py<br/>risk heuristic + impact model"]
         DE["exceptions.py<br/>DataLeakageError"]
     end
     subgraph ADAPTERS["Adapters - external connections"]
@@ -114,7 +114,7 @@ healthcare-noshow-predictor/
 ├── domain/                 # Pure Python, zero external imports
 │   ├── models.py          # Patient, Appointment, NoShowOutcome
 │   ├── ports.py           # AppointmentRepository, NoShowPredictorPort
-│   ├── services.py        # Baseline no-show risk heuristic
+│   ├── services.py        # Risk heuristic + business-impact model
 │   └── exceptions.py      # DataLeakageError, domain errors
 ├── adapters/              # External connections
 │   ├── data/              # KaggleAppointmentCSVRepository
@@ -126,9 +126,9 @@ healthcare-noshow-predictor/
 ├── scripts/               # run_training, run_phase2, export_demo
 ├── streamlit_app.py       # Interactive call-list demo (Community Cloud)
 ├── demo/                  # Precomputed scored_appointments.csv for the demo
-├── tests/                 # Unit + property-based (Hypothesis), 91 tests
+├── tests/                 # Unit + property-based (Hypothesis), 95 tests
 ├── notebooks/             # EDA only, no production logic
-├── docs/adr/              # 12 Architecture Decision Records
+├── docs/adr/              # 14 Architecture Decision Records
 └── reports/               # EDA gate, model metrics, fairness, shap/
 ```
 
@@ -154,6 +154,8 @@ healthcare-noshow-predictor/
 ---
 
 ## EDA Gate Results
+
+*Frozen pre-fix values from the May 2026 gate. Lead-time handling was later corrected (ADR-014); the gate verdict is unchanged.*
 
 | Gate | Criterion | Result | Status |
 |------|-----------|--------|--------|
@@ -226,7 +228,7 @@ Measured on the June holdout (n = 26,451) at **two settings**. See [ADR-009](doc
 
 **1. At the setting the app uses: top 20 per day** (6 days, 120 calls)
 
-| Age band | Share of patients | Share of no-shows | Share of the call list |
+| Age band | Share of appointments | Share of no-shows | Share of the call list |
 |----------|-------------------|-------------------|------------------------|
 | 0-17 | 24.6% | 26.8% | 36.7% |
 | 18-34 | 21.1% | 25.5% | 46.7% |
@@ -327,7 +329,8 @@ pre-commit install
 make test
 make check
 
-# Regenerate Phase 2 artifacts (SHAP, fairness, business impact) + demo data
+# Regenerate all artifacts: model metrics, Phase 2 (SHAP, fairness, impact), demo data
+python scripts/run_training.py
 python scripts/run_phase2.py
 python scripts/export_demo.py
 
@@ -346,8 +349,9 @@ streamlit run streamlit_app.py
 | 1 | Adapters + model training | ✅ Complete (3 models) |
 | 2 | SHAP, fairness, business impact | ✅ Complete |
 | 2.5 | Streamlit call-list demo | ✅ Built (Community Cloud deploy pending) |
+| 2.6 | Pre-ship audit: lead-time fix, fairness at operating point | ✅ Complete (ADR-013, ADR-014) |
 
-**91 tests** total (unit + property-based), mypy strict, 81% coverage.
+**95 tests** total (unit + property-based), mypy strict, 83% coverage (gate 75%).
 
 ---
 

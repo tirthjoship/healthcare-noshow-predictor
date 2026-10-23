@@ -1,4 +1,4 @@
-"""LogisticPredictor — logistic regression adapter implementing NoShowPredictorPort.
+"""LogisticPredictor: logistic regression adapter implementing NoShowPredictorPort.
 
 _score_to_category is module-level so XGBoostPredictor and CalibratedPredictor
 can import it directly from this module (shared threshold logic).
@@ -32,7 +32,7 @@ def _score_to_category(score: float) -> str:
 class LogisticPredictor:
     """Logistic regression adapter for no-show risk prediction.
 
-    Implements NoShowPredictorPort (structural duck-typing — no explicit
+    Implements NoShowPredictorPort (structural duck-typing, no explicit
     inheritance to keep domain free of adapter imports).
 
     Usage:

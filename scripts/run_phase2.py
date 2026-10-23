@@ -1,11 +1,11 @@
-"""Phase 2 analysis runner — SHAP importance, fairness, and business impact.
+"""Phase 2 analysis runner: SHAP importance, fairness, and business impact.
 
-Produces the frozen artifacts consumed by the README and the portfolio:
+Produces the frozen artifacts consumed by the README and the demo:
     reports/shap/global_importance.json   (+ .png bar chart, beeswarm)
     reports/fairness.json
     reports/business_impact.json
 
-All numbers are computed from the real Kaggle dataset — nothing is hand-entered.
+All numbers are computed from the real Kaggle dataset, nothing is hand-entered.
 Run:  python scripts/run_phase2.py
 """
 
@@ -111,7 +111,7 @@ def run_shap(appointments: list, labels: list) -> dict[str, float]:
     plt.figure(figsize=(8, 5))
     plt.barh(feats, vals, color="#2c7fb8")
     plt.xlabel("Mean |SHAP value|  (impact on no-show log-odds)")
-    plt.title("Global feature importance — no-shows are an operations problem")
+    plt.title("Global feature importance: no-shows are an operations problem")
     plt.tight_layout()
     plt.savefig(SHAP_DIR / "global_importance.png", dpi=130)
     plt.close()

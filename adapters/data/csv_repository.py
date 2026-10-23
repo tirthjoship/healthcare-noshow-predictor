@@ -1,4 +1,4 @@
-"""KaggleAppointmentCSVRepository — CSV adapter for Kaggle medical appointments dataset.
+"""KaggleAppointmentCSVRepository: CSV adapter for Kaggle medical appointments dataset.
 
 Implements the AppointmentRepository port. Parses the Kaggle dataset CSV,
 constructs domain objects, and enforces the leakage guard via ALLOWED_COLUMNS.

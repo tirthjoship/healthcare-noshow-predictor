@@ -13,7 +13,7 @@ An audit before shipping found that `AppointmentDay` is always midnight while `S
 | Appointment before booking | 5 | n/a | 0 (clipped) |
 | Same day | 38,563 | 4.6% | 0 (was -1, clipped) |
 | Next day | 5,213 | 21.4% | **0** |
-| 2+ days | ~66,700 | ~24 to 28% | **one day too low** |
+| 2+ days | 66,746 | 24 to 33% (29% overall) | **one day too low** |
 
 The EDA gate had called the 34.9% "negative" lead times data errors. They were almost all same-day bookings, the strongest signal in the dataset, merged with next-day bookings that miss about 4.6 times as often.
 
@@ -28,7 +28,7 @@ The EDA gate had called the 34.9% "negative" lead times data errors. They were a
 
 ## Consequences
 
-Results got slightly **better**, as expected for measurement error in the top feature. Nothing previously claimed was overstated.
+Discrimination and CV calibration got slightly **better**, as expected for measurement error in the top feature. Nothing previously claimed was overstated. (June holdout ECE moved slightly the other way, 0.0156 → 0.0165, within noise.)
 
 | Metric (calibrated XGBoost) | Before | After |
 |---|---|---|
@@ -39,5 +39,5 @@ Results got slightly **better**, as expected for measurement error in the top fe
 | Rows | 110,527 | 110,522 |
 
 - Logistic baseline AUC 0.6565 → 0.6605.
-- Global SHAP order unchanged (lead time, age, neighbourhood, SMS); lead time's mean |SHAP| rose 0.84 → 0.94 now that same-day and next-day are separated.
+- Global SHAP top 4 unchanged (lead time, age, neighbourhood, SMS); lead time's mean |SHAP| rose 0.84 → 0.94 now that same-day and next-day are separated. Ranks 5 to 10 reshuffled slightly.
 - Lesson recorded in the decision tree: inspect timestamp precision before treating "impossible" values as errors.

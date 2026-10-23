@@ -10,7 +10,7 @@ The Phase 2 fairness report (ADR-009) measured errors at a single probability th
 
 **Finding (June 2016 holdout, after the ADR-014 fix):**
 
-| Age band | Share of patients | Share of no-shows | Share of the call list | FNR at threshold 0.22 |
+| Age band | Share of appointments | Share of no-shows | Share of the call list | FNR at threshold 0.22 |
 |---|---|---|---|---|
 | 0-17 | 24.6% | 26.8% | 36.7% | 15.5% |
 | 18-34 | 21.1% | 25.5% | 46.7% | 6.6% |
@@ -33,6 +33,6 @@ Calibration is fine in every age band (ECE 0.016 to 0.023), so the scores are ho
 
 ## Consequences
 
-- The public demo shows a real limitation instead of hiding it. That's the main talking point for health-sector reviewers.
+- The public demo shows a real limitation instead of hiding it.
 - The ADR-009 threshold table stays, labeled as a screening view tuned on the test month.
-- Small-sample caveat: the capacity view covers 6 June days (120 calls). The direction is clear; the exact percentages are noisy.
+- Small-sample caveat: the capacity view covers 6 June days (120 calls). The direction is clear; the exact percentages are noisy. Isotonic calibration creates tied scores at the daily cutoff; across every possible tie order, 55+ stays at 1 of 120 calls.

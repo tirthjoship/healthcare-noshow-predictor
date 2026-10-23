@@ -1,4 +1,4 @@
-"""Tests for adapters/ml/fairness.py — per-slice error rates and disparities."""
+"""Tests for adapters/ml/fairness.py: per-slice error rates and disparities."""
 
 import numpy as np
 
@@ -113,7 +113,7 @@ class TestCapacityReport:
         assert old["no_shows_captured"] == 0.0
         assert young["share_of_list"] == 1.0
         assert old["share_of_list"] == 0.0
-        assert old["share_of_patients"] == 0.5
+        assert old["share_of_appointments"] == 0.5
         assert old["share_of_no_shows"] == 0.4
 
     def test_group_without_no_shows_reports_nan_capture(self) -> None:

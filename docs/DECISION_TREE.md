@@ -78,7 +78,7 @@ flowchart TD
 
 | | |
 |---|---|
-| **What we saw** | No-show rate 20.2%. Same-day bookings 4.6%, next-day 21.4%, 2+ days about 24 to 28%. Gender makes little difference. Younger adults miss most. **Patients sent an SMS missed more** (26% vs 13%). SMS patients had much longer lead times (mean about 18 vs 5.5 days, measured in the EDA gate before the ADR-014 fix, so each is about a day low). |
+| **What we saw** | No-show rate 20.2%. Same-day bookings 4.6%, next-day 21.4%, 2+ days 24 to 33% (29% overall). Gender makes little difference. Younger adults miss most. **Patients sent an SMS missed more** (27.6% vs 16.7%). SMS patients had much longer lead times (mean 19.0 vs 6.0 days). |
 | **Plain English** | SMS reminders weren't causing no-shows. The clinic sent them to appointments booked far ahead, which were already riskier. |
 | **Scientific** | Confounding by indication / selection effect (a Simpson's-paradox pattern): treatment assignment depends on a risk factor. The SMS coefficient is predictive, not causal. |
 | **Decision** | Keep SMS as a feature (it is known before the appointment), and document it everywhere as non-causal. |
@@ -122,7 +122,7 @@ flowchart TD
 | **What we saw** | Mean absolute SHAP: lead time 0.94, age 0.25, neighbourhood 0.11, SMS 0.09. Diabetes, hypertension, alcoholism and disability all ≤ 0.02. |
 | **Plain English** | **It's a scheduling problem, not a medical one.** How far ahead people book matters far more than their health conditions. That's good news, because scheduling is something a clinic can change. |
 | **Scientific** | Global SHAP (TreeExplainer, 5,000-row sample, log-odds space). Per-patient SHAP in the app. |
-| **Records** | [ADR-012](adr/ADR-012-shap-narrative.md) (ADR-012 planned SMS 3rd; measured, neighbourhood is 3rd. After ADR-014, lead time's mean |SHAP| rose 0.84 → 0.94) |
+| **Records** | [ADR-012](adr/ADR-012-shap-narrative.md) (ADR-012 planned SMS 3rd; measured, neighbourhood is 3rd. After ADR-014, lead time's mean \|SHAP\| rose 0.84 → 0.94) |
 
 ### L7. Fairness
 
@@ -140,7 +140,7 @@ flowchart TD
 |---|---|
 | **What we saw** | At top-20 per day, **43%** of called patients really were going to miss (vs about 18 to 20% at random). The first impact estimate used the top 20 over the whole test week (55%), which overstated it. |
 | **Plain English** | About 9 of every 20 calls reach someone who would have missed, so roughly **8.7 slots a day** could be saved, at most. |
-| **Scientific** | Precision@K per day = 0.4333 (6 days, 120 calls). Slots = K × precision × 22 working days ≈ 191/month. Dollars = slots × an editable cost (default USD 200, literature estimate). Upper bound: assumes every reached patient keeps or rebooks. |
+| **Scientific** | Precision@K per day ≈ 0.43 (6 days, 120 calls; 0.43 to 0.45 depending on how tied calibrated scores at the cutoff are ordered). Slots = K × precision × 22 working days ≈ 191/month. Dollars = slots × an editable cost (default USD 200, literature estimate). Upper bound: assumes every reached patient keeps or rebooks. |
 | **Decision** | Slots first, dollars as an editable assumption. |
 | **Records** | [ADR-004](adr/ADR-004-revenue-based-impact.md) (amended), [ADR-005](adr/ADR-005-capacity-constrained-topk.md) |
 
