@@ -146,6 +146,22 @@ h3 {{ font-size: 1.15rem !important; }}
 .note b {{ color: var(--ink); }}
 [data-testid="stExpander"] {{ border: 1px solid var(--line); border-radius: 12px; }}
 [data-testid="stExpander"] summary p {{ font-family: var(--mono); font-size: 12.5px; letter-spacing: .04em; }}
+/* overview dashboard */
+.ov-kpis .tiles {{ margin: 2px 0 10px; gap: 10px; }}
+.ov-kpis .tile {{ padding: 9px 14px 8px; }}
+.ov-kpis .tile .num {{ font-size: 28px; }}
+.ov-kpis .tile .lab {{ margin-top: 3px; font-size: 12.5px; }}
+[class*="st-key-card_ov_"] {{ height: 262px !important; flex: 0 0 auto !important; overflow: hidden; }}
+[class*="st-key-card_ov_"] [data-testid="stElementToolbar"] {{ display: none; }}
+[class*="st-key-card_ov_heat"], [class*="st-key-card_ov_list"] {{ height: 470px !important; }}
+.ov-cap {{ font-size: 12px; color: var(--slate); margin: 0 2px 2px; line-height: 1.35; }}
+.ov-foot {{ display: flex; justify-content: space-between; flex-wrap: wrap; gap: 6px 16px;
+  font-size: 11.5px; color: var(--slate); margin-top: 8px; }}
+[class*="st-key-ov_rail"] label p {{ font-size: 12px; color: var(--slate); }}
+@media (max-width: 720px) {{
+  .ov-kpis .tiles {{ grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }}
+  [class*="st-key-card_ov_"] {{ height: auto !important; min-height: 260px; }}
+}}
 @media (max-width: 720px) {{ .nb-q {{ font-size: 28px; }} .nb-eyebrow {{ font-size: 10.5px; letter-spacing: .1em; }} }}
 [data-testid="stMarkdownContainer"] ol, [data-testid="stMarkdownContainer"] ol li {{ font-size: 13.5px; line-height: 1.55; }}
 </style>
