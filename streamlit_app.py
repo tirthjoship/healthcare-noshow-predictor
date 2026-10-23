@@ -914,3 +914,9 @@ with tab_how:
             "- **Caveats:** public data from one city in 2016, no real call outcomes.\n"
             "- **Decision records:** all ADRs are in the GitHub repository."
         )
+
+# --------------------------------------------------------------------------- footer
+st.markdown(
+    ui.author_footer("Public Kaggle data. Not connected to any health system."),
+    unsafe_allow_html=True,
+)
