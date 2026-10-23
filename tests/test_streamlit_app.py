@@ -20,7 +20,7 @@ def _run() -> AppTest:
 
 
 def test_default_run_has_six_tabs() -> None:
-    assert len(_run().tabs) == 6
+    assert len(_run().tabs) == 7
 
 
 def test_every_selectbox_option_and_slider_extreme() -> None:
@@ -30,10 +30,11 @@ def test_every_selectbox_option_and_slider_extreme() -> None:
             at.selectbox[i].select_index(list(at.selectbox[i].options).index(opt))
             at.run()
             assert not at.exception
-    at.slider[0].set_value(at.slider[0].max)
+    calls = at.slider[1]
+    calls.set_value(calls.max)
     at.run()
     assert not at.exception
-    at.slider[0].set_value(1)
+    at.slider[1].set_value(1)
     at.run()
     assert not at.exception
 
@@ -53,3 +54,24 @@ def test_fairness_share_of_list_matches_in_bottom_line_and_takeaway() -> None:
     takeaway = [v for v in pages if "Most under-served" in v]
     assert bottom and "0.8%" in bottom[0]
     assert takeaway and "0.8%" in takeaway[0]
+
+
+def test_overview_filters_and_extremes() -> None:
+    at = _run()
+    days = list(at.selectbox(key="ov_day").options)
+    bands = list(at.selectbox(key="ov_band").options)
+    hoods = list(at.selectbox(key="ov_hood").options)
+    for i in range(len(days)):
+        at.selectbox(key="ov_day").select_index(i).run()
+        assert not at.exception
+    at.selectbox(key="ov_day").select_index(0)
+    for i in range(len(bands)):
+        at.selectbox(key="ov_band").select_index(i).run()
+        assert not at.exception
+    for i in (0, 1, len(hoods) - 1):
+        at.selectbox(key="ov_hood").select_index(i).run()
+        assert not at.exception
+    for v in (5, 100):
+        at.slider(key="ov_calls").set_value(v).run()
+        assert not at.exception
+    assert any("Call these" in m.value for m in at.markdown)

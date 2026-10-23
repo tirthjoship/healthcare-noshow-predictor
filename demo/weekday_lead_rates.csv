@@ -1,0 +1,35 @@
+weekday,lead_bucket,appointments,no_shows,no_show_rate
+Fri,Same day,6503,363,0.0558
+Fri,1 to 2 days,3221,771,0.2394
+Fri,3 to 7 days,1969,522,0.2651
+Fri,8 to 14 days,2225,671,0.3016
+Fri,15 to 30 days,3090,1054,0.3411
+Fri,31+ days,2011,656,0.3262
+Mon,Same day,8133,284,0.0349
+Mon,1 to 2 days,2,1,0.5
+Mon,3 to 7 days,6635,1667,0.2512
+Mon,8 to 14 days,2255,746,0.3308
+Mon,15 to 30 days,3105,1055,0.3398
+Mon,31+ days,2584,936,0.3622
+Sat,Same day,8,0,0.0
+Sat,1 to 2 days,10,5,0.5
+Sat,3 to 7 days,12,1,0.0833
+Sat,8 to 14 days,9,3,0.3333
+Thu,Same day,5921,249,0.0421
+Thu,1 to 2 days,3078,669,0.2173
+Thu,3 to 7 days,1828,431,0.2358
+Thu,8 to 14 days,2139,609,0.2847
+Thu,15 to 30 days,2845,896,0.3149
+Thu,31+ days,1435,483,0.3366
+Tue,Same day,9176,431,0.047
+Tue,1 to 2 days,1365,298,0.2183
+Tue,3 to 7 days,6174,1546,0.2504
+Tue,8 to 14 days,2649,832,0.3141
+Tue,15 to 30 days,3969,1304,0.3285
+Tue,31+ days,2305,739,0.3206
+Wed,Same day,8822,465,0.0527
+Wed,1 to 2 days,4262,971,0.2278
+Wed,3 to 7 days,3629,890,0.2452
+Wed,8 to 14 days,2748,803,0.2922
+Wed,15 to 30 days,4362,1352,0.3099
+Wed,31+ days,2043,611,0.2991

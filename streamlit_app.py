@@ -23,6 +23,7 @@ import altair as alt
 import pandas as pd
 import streamlit as st
 
+import overview_tab
 import ui_theme as ui
 from adapters.visualization.call_list import precision_at_capacity, rank_call_list
 
@@ -125,6 +126,8 @@ missing = [
     p
     for p in (
         DEMO_CSV,
+        ROOT / "demo" / "june_scores.csv.gz",
+        ROOT / "demo" / "weekday_lead_rates.csv",
         REPORTS / "model_metrics.json",
         REPORTS / "fairness.json",
         REPORTS / "business_impact.json",
@@ -150,9 +153,10 @@ june_base = float(overall["base_rate"])
 cap_slices = cast("dict[str, dict[str, dict[str, float]]]", capacity["slices"])
 age55 = cap_slices["age_band"]["55+"]
 
-tab_start, tab_calls, tab_why, tab_fair, tab_impact, tab_how = st.tabs(
+tab_overview, tab_start, tab_calls, tab_why, tab_fair, tab_impact, tab_how = st.tabs(
     [
-        "Start here",
+        "Overview",
+        "Brief",
         "Daily call list",
         "Why this patient?",
         "Fairness",
@@ -160,6 +164,10 @@ tab_start, tab_calls, tab_why, tab_fair, tab_impact, tab_how = st.tabs(
         "How we built it",
     ]
 )
+
+# --------------------------------------------------------------------------- overview
+with tab_overview:
+    overview_tab.render()
 
 # --------------------------------------------------------------------------- start
 with tab_start:
