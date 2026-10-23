@@ -291,14 +291,14 @@ value                   = slots × cost per slot    (editable in the app; defaul
 
 ## Interactive Demo
 
-A six-tab Streamlit app (plain language first): **Start here**, a **daily call list** (pick a day + call capacity K), a **SHAP drill-down** per patient, **fairness** at the call-list setting, **impact** in appointment slots, and **how we built it**, all from precomputed artifacts, so it needs no model training or raw data at runtime.
+A seven-tab Streamlit app (plain language first): a one-screen **Overview** dashboard (filters, KPIs, heatmap, ranked call list, age-band balance, coverage bullet), the **Brief**, a **daily call list** (pick a day + call capacity K), a **SHAP drill-down** per patient, **fairness** at the call-list setting, **impact** in appointment slots, and **how we built it**, all from precomputed artifacts, so it needs no model training or raw data at runtime.
 
 ```bash
 pip install -e ".[demo]"
 streamlit run streamlit_app.py
 ```
 
-**Live demo:** [noshow-call-list.streamlit.app](https://noshow-call-list.streamlit.app/) (the app may take a few seconds to wake up). Regenerate the artifacts with `python scripts/run_training.py && python scripts/run_phase2.py && python scripts/export_demo.py`.
+**Live demo:** [noshow-call-list.streamlit.app](https://noshow-call-list.streamlit.app/) (the app may take a few seconds to wake up). Regenerate the artifacts with `python scripts/run_training.py && python scripts/run_phase2.py && python scripts/export_demo.py && python scripts/export_dashboard.py`.
 
 ---
 
@@ -335,6 +335,7 @@ make check
 python scripts/run_training.py
 python scripts/run_phase2.py
 python scripts/export_demo.py
+python scripts/export_dashboard.py   # demo/june_scores.csv + weekday_lead_rates.csv (Overview tab)
 
 # Launch the interactive demo
 streamlit run streamlit_app.py
