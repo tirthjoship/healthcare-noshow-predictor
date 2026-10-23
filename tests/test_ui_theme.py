@@ -97,3 +97,10 @@ def test_tiles_columns_and_note_tone_and_bare_tile() -> None:
     assert 'class="note accent"' in ui.note("T", "b", tone="accent")
     assert 'class="note"' in ui.note("T", "b")
     assert 'class="tile bare"' in ui.tile("1", "x", bare=True)
+
+
+def test_author_footer_links_open_in_new_tab() -> None:
+    out = ui.author_footer("A note.")
+    assert "Built by Tirth Joshi" in out and out.endswith("A note.</div>")
+    assert out.count('target="_blank" rel="noopener"') == 2
+    assert "https://linkedin.com/in/tirthjoshi" in out
