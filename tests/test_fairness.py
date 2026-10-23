@@ -2,7 +2,7 @@
 
 import numpy as np
 
-from adapters.ml.fairness import fairness_report, group_metrics
+from adapters.ml.fairness import capacity_report, fairness_report, group_metrics
 
 _GROUP_KEYS = {"n", "base_rate", "selection_rate", "fpr", "fnr", "precision", "ece"}
 
@@ -80,3 +80,45 @@ class TestFairnessReport:
         )
         # Only group A meets min_group_size → fewer than two eligible → NaN gap.
         assert np.isnan(report["disparities"]["grp"]["fpr_gap"])  # type: ignore[index]
+
+
+class TestCapacityReport:
+    """Fairness at the operating point the app uses: top-K per day (ADR-005, ADR-013)."""
+
+    def _case(self) -> tuple[np.ndarray, np.ndarray, np.ndarray, dict[str, np.ndarray]]:
+        # Two days, K=2 per day. Group "old" has lower scores, so it is under-selected.
+        days = np.array(["d1"] * 4 + ["d2"] * 4)
+        y_true = np.array([1, 1, 1, 0, 1, 0, 1, 0], dtype=float)
+        y_prob = np.array([0.9, 0.8, 0.2, 0.1, 0.7, 0.6, 0.3, 0.05])
+        groups = np.array(
+            ["young", "young", "old", "old", "young", "young", "old", "old"]
+        )
+        return days, y_true, y_prob, {"age": groups}
+
+    def test_selects_top_k_per_day(self) -> None:
+        days, y_true, y_prob, slices = self._case()
+        report = capacity_report(y_true, y_prob, days, slices, k=2)
+        assert report["k"] == 2
+        assert report["n_selected"] == 4
+        # Selected: d1 → 0.9, 0.8 (both no-shows); d2 → 0.7 (no-show), 0.6 (show)
+        assert report["overall"]["precision"] == 0.75
+
+    def test_group_capture_and_list_share(self) -> None:
+        days, y_true, y_prob, slices = self._case()
+        report = capacity_report(y_true, y_prob, days, slices, k=2)
+        young = report["slices"]["age"]["young"]
+        old = report["slices"]["age"]["old"]
+        # young: 3 no-shows, all 3 on the list; old: 2 no-shows, none on the list
+        assert young["no_shows_captured"] == 1.0
+        assert old["no_shows_captured"] == 0.0
+        assert young["share_of_list"] == 1.0
+        assert old["share_of_list"] == 0.0
+        assert old["share_of_patients"] == 0.5
+        assert old["share_of_no_shows"] == 0.4
+
+    def test_group_without_no_shows_reports_nan_capture(self) -> None:
+        days = np.array(["d1", "d1"])
+        y_true = np.array([0.0, 1.0])
+        y_prob = np.array([0.1, 0.9])
+        report = capacity_report(y_true, y_prob, days, {"g": np.array(["a", "b"])}, k=1)
+        assert np.isnan(report["slices"]["g"]["a"]["no_shows_captured"])

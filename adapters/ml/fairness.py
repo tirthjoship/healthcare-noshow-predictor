@@ -139,3 +139,94 @@ def fairness_report(
         }
 
     return report
+
+
+def _select_top_k_per_day(y_prob: np.ndarray, days: np.ndarray, k: int) -> np.ndarray:
+    """Boolean mask of the K highest-risk rows within each day."""
+    selected = np.zeros(len(y_prob), dtype=bool)
+    for day in np.unique(days):
+        idx = np.flatnonzero(days == day)
+        top = idx[np.argsort(-y_prob[idx], kind="stable")[: max(0, k)]]
+        selected[top] = True
+    return selected
+
+
+def capacity_report(
+    y_true: np.ndarray,
+    y_prob: np.ndarray,
+    days: np.ndarray,
+    slices: dict[str, np.ndarray],
+    k: int,
+) -> dict[str, object]:
+    """Fairness at the call-list operating point: top-K per day (ADR-005, ADR-013).
+
+    A fixed probability threshold describes a screening rule the app never uses.
+    The outreach team calls the K riskiest patients each day, so this report asks,
+    per group: what share of the group's no-shows make the call list, and is the
+    group's share of the list in line with its share of patients and no-shows?
+
+    Args:
+        y_true: Binary ground-truth labels (0/1).
+        y_prob: Predicted no-show probabilities.
+        days: Appointment day per row; selection happens within each day.
+        slices: Map of attribute name → array of group labels.
+        k: Daily call capacity.
+
+    Returns:
+        Dict with k, n_selected, overall precision/capture, and per-slice groups
+        with no_shows_captured, share_of_list, share_of_patients, share_of_no_shows.
+        Capture for a group with no no-shows is NaN.
+    """
+    y_true = np.asarray(y_true, dtype=float)
+    y_prob = np.asarray(y_prob, dtype=float)
+    days = np.asarray(days).astype(str)
+    selected = _select_top_k_per_day(y_prob, days, k)
+
+    n_total = len(y_true)
+    n_selected = int(selected.sum())
+    total_no_shows = float(y_true.sum())
+    hits = float((selected & (y_true == 1)).sum())
+
+    report: dict[str, object] = {
+        "k": int(k),
+        "n_days": int(len(np.unique(days))),
+        "n_selected": n_selected,
+        "overall": {
+            "precision": round(hits / n_selected, 4) if n_selected else float("nan"),
+            "no_shows_captured": (
+                round(hits / total_no_shows, 4) if total_no_shows else float("nan")
+            ),
+        },
+        "slices": {},
+    }
+    slices_out: dict[str, object] = report["slices"]  # type: ignore[assignment]
+
+    for attr, labels in slices.items():
+        labels = np.asarray(labels).astype(str)
+        groups: dict[str, dict[str, float]] = {}
+        for value in sorted(set(labels.tolist())):
+            mask = labels == value
+            group_no_shows = float(y_true[mask].sum())
+            group_hits = float((selected & mask & (y_true == 1)).sum())
+            groups[value] = {
+                "n": float(mask.sum()),
+                "no_shows_captured": (
+                    round(group_hits / group_no_shows, 4)
+                    if group_no_shows
+                    else float("nan")
+                ),
+                "share_of_list": (
+                    round(float((selected & mask).sum()) / n_selected, 4)
+                    if n_selected
+                    else float("nan")
+                ),
+                "share_of_patients": round(float(mask.sum()) / n_total, 4),
+                "share_of_no_shows": (
+                    round(group_no_shows / total_no_shows, 4)
+                    if total_no_shows
+                    else float("nan")
+                ),
+            }
+        slices_out[attr] = groups
+
+    return report

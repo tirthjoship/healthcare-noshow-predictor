@@ -26,8 +26,7 @@ from sklearn.metrics import f1_score  # noqa: E402
 
 from adapters.data.csv_repository import KaggleAppointmentCSVRepository  # noqa: E402
 from adapters.ml.calibrated_predictor import CalibratedPredictor  # noqa: E402
-from adapters.ml.evaluation import evaluate_model  # noqa: E402
-from adapters.ml.fairness import fairness_report  # noqa: E402
+from adapters.ml.fairness import capacity_report, fairness_report  # noqa: E402
 from adapters.ml.shap_explainer import ShapExplainer  # noqa: E402
 from domain.services import estimate_business_impact  # noqa: E402
 
@@ -54,6 +53,16 @@ def _age_band(age: int) -> str:
     if age <= 54:
         return "35-54"
     return "55+"
+
+
+def _top_neighbourhood_labels(appts: list, top_n: int = 5) -> np.ndarray:
+    """Label each appointment with its neighbourhood if it is a top-N by volume, else 'other'."""
+    names = [a.neighbourhood for a in appts]
+    counts: dict[str, int] = {}
+    for name in names:
+        counts[name] = counts.get(name, 0) + 1
+    top = set(sorted(counts, key=lambda n: (-counts[n], n))[:top_n])
+    return np.array([n if n in top else "other" for n in names])
 
 
 def _best_f1_threshold(y_true: np.ndarray, y_prob: np.ndarray) -> float:
@@ -150,23 +159,36 @@ def run_fairness(
         "scholarship": np.array(
             ["scholarship" if a.scholarship else "none" for a in test_appts]
         ),
+        "neighbourhood": _top_neighbourhood_labels(test_appts),
     }
 
     report = fairness_report(y_true, y_prob, slices, threshold)
     report["holdout_period"] = "2016-06"
-    report["threshold_rule"] = "F1-optimal on holdout (scan 0.10-0.90)"
+    report["threshold_rule"] = (
+        "F1-optimal, tuned on the June holdout itself (scan 0.10-0.90): "
+        "a screening view, slightly optimistic"
+    )
+
+    # Operating point the app actually uses: top-K per appointment day (ADR-013).
+    days = np.array([a.appointment_day.date().isoformat() for a in test_appts])
+    report["capacity"] = capacity_report(
+        y_true, y_prob, days, slices, k=DAILY_CALL_CAPACITY
+    )
     (REPORTS / "fairness.json").write_text(json.dumps(report, indent=2))
 
     print(f"[FAIR] threshold={threshold}  disparities={report['disparities']}")
     return report, threshold
 
 
-def run_business_impact(y_true: np.ndarray, y_prob: np.ndarray) -> dict[str, float]:
-    print("[IMPACT] Estimating recoverable revenue from June holdout precision@K...")
-    metrics = evaluate_model(
-        y_true, y_prob, "calibrated_xgboost", k=DAILY_CALL_CAPACITY
-    )
-    precision_at_k = float(metrics["precision_at_k"])
+def run_business_impact(capacity: dict) -> dict[str, float]:
+    """Slots-first what-if at the app's operating point: top-K per day (ADR-004 amendment).
+
+    Precision comes from the per-day capacity selection (``capacity_report``), not the
+    top-K over the whole holdout, which overstated it (0.55 vs per-day 0.43).
+    """
+    print("[IMPACT] Estimating recoverable slots from per-day precision@K...")
+    overall = capacity["overall"]
+    precision_at_k = float(overall["precision"])  # type: ignore[index]
 
     impact = estimate_business_impact(
         precision_at_k=precision_at_k,
@@ -176,17 +198,25 @@ def run_business_impact(y_true: np.ndarray, y_prob: np.ndarray) -> dict[str, flo
     )
     impact_out: dict[str, object] = dict(impact)
     impact_out["precision_source"] = (
-        f"calibrated_xgboost precision@{DAILY_CALL_CAPACITY} on 2016-06 holdout"
+        f"calibrated_xgboost, top-{DAILY_CALL_CAPACITY} per appointment day, "
+        f"2016-06 holdout ({capacity['n_days']} days, {capacity['n_selected']} calls)"
     )
     impact_out["assumptions"] = {
-        "cost_per_noshow": "USD 200 — primary-care literature estimate (labeled, not clinic data)",
-        "conversion": "assumes every correctly-flagged, called no-show recovers a slot (upper bound)",
+        "cost_per_noshow": (
+            "USD 200, primary-care literature estimate (labeled, not clinic data; "
+            "editable in the app)"
+        ),
+        "conversion": (
+            "assumes every correctly-flagged, called no-show recovers a slot "
+            "(upper bound; real conversion is lower)"
+        ),
     }
     (REPORTS / "business_impact.json").write_text(json.dumps(impact_out, indent=2))
 
     print(
-        f"[IMPACT] precision@{DAILY_CALL_CAPACITY}={precision_at_k} -> "
-        f"monthly ${impact['monthly_value']:,.0f}, annual ${impact['annual_value']:,.0f}"
+        f"[IMPACT] per-day precision@{DAILY_CALL_CAPACITY}={precision_at_k} -> "
+        f"{impact['recoverable_slots_per_day']:.1f} slots/day, "
+        f"{impact['recoverable_slots_per_month']:.0f} slots/month"
     )
     return impact
 
@@ -200,8 +230,8 @@ def main() -> None:
 
     run_shap(all_appts, all_labels)
     test_appts, y_true, y_prob = score_holdout(repo)
-    run_fairness(test_appts, y_true, y_prob)
-    run_business_impact(y_true, y_prob)
+    fairness, _ = run_fairness(test_appts, y_true, y_prob)
+    run_business_impact(fairness["capacity"])
     print("\nPhase 2 artifacts written to reports/.")
 
 
