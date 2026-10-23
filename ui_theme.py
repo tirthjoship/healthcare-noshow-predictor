@@ -164,6 +164,12 @@ h3 {{ font-size: 1.15rem !important; }}
 }}
 @media (max-width: 720px) {{ .nb-q {{ font-size: 28px; }} .nb-eyebrow {{ font-size: 10.5px; letter-spacing: .1em; }} }}
 [data-testid="stMarkdownContainer"] ol, [data-testid="stMarkdownContainer"] ol li {{ font-size: 13.5px; line-height: 1.55; }}
+.author-foot {{
+  margin-top: 28px; padding-top: 12px; border-top: 1px solid var(--line);
+  font: 400 12px/1.6 var(--body); color: var(--slate);
+}}
+.author-foot a {{ color: var(--accent); text-decoration: none; border-bottom: 1px solid currentColor; }}
+.author-foot a:hover {{ opacity: .8; }}
 </style>
 """
 
@@ -295,6 +301,17 @@ def note(title: str, body: str, tone: str = "caution") -> str:
     """Callout box: amber for a known limitation, teal-tinted for a hint."""
     cls = "note accent" if tone == "accent" else "note"
     return f'<div class="{cls}"><b>{esc(title)}</b> {esc(body)}</div>'
+
+
+def author_footer(note: str = "") -> str:
+    """Slim author credit line for the bottom of the page (static strings only)."""
+    tail = f" · {note}" if note else ""
+    return (
+        '<div class="author-foot">Built by Tirth Joshi · '
+        '<a href="https://github.com/tirthjoship/healthcare-noshow-predictor" target="_blank" rel="noopener">Source code on GitHub</a> · '
+        '<a href="https://linkedin.com/in/tirthjoshi" target="_blank" rel="noopener">LinkedIn</a>'
+        f"{tail}</div>"
+    )
 
 
 @contextmanager

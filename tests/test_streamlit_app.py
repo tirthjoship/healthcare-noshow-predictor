@@ -75,3 +75,9 @@ def test_overview_filters_and_extremes() -> None:
         at.slider(key="ov_calls").set_value(v).run()
         assert not at.exception
     assert any("Call these" in m.value for m in at.markdown)
+
+
+def test_author_footer_present_once() -> None:
+    at = _run()
+    hits = [m for m in at.markdown if "Built by Tirth Joshi" in m.value]
+    assert len(hits) == 1
